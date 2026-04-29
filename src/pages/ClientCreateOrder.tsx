@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { MainLayout } from '../../components/MainLayout';
-import { useLogistics } from '../../contexts/LogisticsContext';
+import { MainLayout } from '../components/MainLayout';
+import { useLogistics } from '../contexts/LogisticsContext';
 import { Package, Upload, ArrowLeft, CheckCircle2, FileSpreadsheet, X } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'motion/react';
-import { cn } from '../../lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
+import { cn } from '../lib/utils';
 
 export const ClientCreateOrder: React.FC = () => {
   const { createOrder } = useLogistics();

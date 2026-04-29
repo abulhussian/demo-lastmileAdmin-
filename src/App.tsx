@@ -7,7 +7,7 @@ import { AdminDrivers } from './pages/admin/AdminDrivers';
 import { AdminCash } from './pages/admin/AdminCash';
 import { AdminBilling } from './pages/admin/AdminBilling';
 import { ClientDashboard } from './pages/client/ClientDashboard';
-import { ClientCreateOrder } from './pages/client/ClientCreateOrder';
+import { ClientCreateOrder } from './pages/ClientCreateOrder';
 
 import AdminUsers from './pages/admin/AdminUsers';
 import ClientProfile from './pages/client/ClientProfile';
@@ -34,12 +34,14 @@ const AppRoutes = () => {
           <Route path="/admin/users" element={<AdminUsers />} />
           <Route path="/admin/profile" element={<ClientProfile />} />
           <Route path="*" element={<Navigate to="/admin" replace />} />
+          <Route path="/create-order" element={<ClientCreateOrder />} />
+
         </>
       ) : (
         <>
           <Route path="/client" element={<ClientDashboard />} />
           <Route path="/client/orders" element={<AdminOrders />} />
-          <Route path="/client/create-order" element={<ClientCreateOrder />} />
+          <Route path="/create-order" element={<ClientCreateOrder />} />
           <Route path="/client/billing" element={<AdminBilling />} />
           <Route path="/client/profile" element={<ClientProfile />} />
           <Route path="*" element={<Navigate to="/client" replace />} />

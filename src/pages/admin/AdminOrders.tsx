@@ -5,6 +5,7 @@ import { StatusBadge } from '../../components/Cards';
 import { formatCurrency, formatDate, cn } from '../../lib/utils';
 import { Filter, Search, MoreVertical, MapPin, Phone, User as UserIcon, Plus, Package, X, Truck, Calendar, Download, Upload } from 'lucide-react';
 import { OrderStatus, Order } from '../../types';
+import { useNavigate } from 'react-router-dom';
 
 export const AdminOrders: React.FC = () => {
   const { orders, drivers, updateOrderStatus, assignDriver, createOrder, deleteOrder, currentUser } = useLogistics();
@@ -13,6 +14,7 @@ export const AdminOrders: React.FC = () => {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showAssignForm, setShowAssignForm] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const navigate = useNavigate();
 
   const isAdmin = currentUser?.role === 'ADMIN';
 
@@ -91,7 +93,7 @@ export const AdminOrders: React.FC = () => {
               Export
             </button>
             <button 
-              onClick={() => setIsCreating(true)}
+             onClick={() => navigate('/create-order')}
               className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-lg text-xs font-bold hover:bg-indigo-700 transition-colors shadow-md"
             >
               <Plus size={14} />

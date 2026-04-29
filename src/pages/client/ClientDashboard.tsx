@@ -91,7 +91,7 @@ export const ClientDashboard: React.FC = () => {
             </p>
             <div className="space-y-3">
               <Link 
-                to="/client/create-order" 
+                to="/create-order" 
                 className="block w-full text-center py-2.5 bg-white text-indigo-600 font-bold rounded-lg hover:bg-indigo-50 transition-colors"
               >
                 Create Single Order

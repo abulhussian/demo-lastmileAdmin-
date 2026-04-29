@@ -7,8 +7,7 @@ import { MOCK_USERS, MOCK_DRIVERS } from '../lib/mockData';
 export const LoginPage: React.FC = () => {
   const { login } = useLogistics();
   
-  const allUsers = [...MOCK_USERS, ...MOCK_DRIVERS];
-
+const allUsers = MOCK_USERS.filter(user => user.role !== 'DRIVER');
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
       {/* Background decoration */}
