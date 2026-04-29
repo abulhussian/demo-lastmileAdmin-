@@ -21,6 +21,7 @@ interface LogisticsContextType {
   toggleUserStatus: (userId: string) => Promise<void>;
   // User Actions
   addUser: (user: Partial<User>) => Promise<void>;
+  updateUser: (userId: string, userData: Partial<User>) => Promise<void>;
   deleteUser: (userId: string) => Promise<void>;
   // Billing
   generateInvoices: () => Promise<void>;
@@ -191,6 +192,12 @@ export const LogisticsProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setDrivers(prev => prev.filter(d => d.id !== userId));
   };
 
+  const updateUser = async (userId: string, userData: Partial<User>) => {
+    await apiDelay();
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, ...userData } : u));
+    setDrivers(prev => prev.map(d => d.id === userId ? { ...d, ...userData as Driver } : d));
+  };
+
   const generateInvoices = async () => {
     await apiDelay();
     // Simplified: Generate one invoice per client for un-invoiced delivered orders
@@ -235,7 +242,7 @@ export const LogisticsProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     <LogisticsContext.Provider value={{
       currentUser, users, drivers, orders, invoices, settlements,
       login, logout, updateOrderStatus, assignDriver, createOrder, deleteOrder,
-      settleDriverCash, toggleUserStatus, addUser, deleteUser,
+      settleDriverCash, toggleUserStatus, addUser, updateUser, deleteUser,
       generateInvoices, markInvoicePaid
     }}>
       {children}

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MainLayout } from '../../components/MainLayout';
 import { useLogistics } from '../../contexts/LogisticsContext';
 import { KPICard } from '../../components/Cards';
@@ -36,6 +37,7 @@ const chartData = [
 ];
 
 export const AdminDashboard: React.FC = () => {
+  const navigate = useNavigate();
   const { orders, drivers } = useLogistics();
 
   const totalOrders = orders.length;
@@ -151,7 +153,12 @@ export const AdminDashboard: React.FC = () => {
                   </div>
                 ))}
               </div>
-              <button className="text-[11px] font-bold bg-blue-500 px-3 py-1.5 rounded-lg">View Logs</button>
+              <button 
+                onClick={() => navigate('/admin/orders')}
+                className="text-[11px] font-bold bg-blue-500 px-3 py-1.5 rounded-lg"
+              >
+                View Logs
+              </button>
             </div>
           </div>
         </div>

@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
 import { MainLayout } from '../../components/MainLayout';
 import { useLogistics } from '../../contexts/LogisticsContext';
-import { User, UserRole } from '../../types';
+import { User, UserRole, Driver } from '../../types';
 import { Search, Plus, MoreVertical, Edit2, Trash2, Shield, User as UserIcon } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 const AdminUsers: React.FC = () => {
-  const { users, drivers, addUser, deleteUser, toggleUserStatus } = useLogistics();
+  const { users, drivers, addUser, updateUser, deleteUser, toggleUserStatus } = useLogistics();
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<UserRole | 'ALL'>('ALL');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | Driver | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const allSystemUsers = [...users, ...drivers];
@@ -21,7 +22,7 @@ const AdminUsers: React.FC = () => {
     return matchesSearch && matchesRole;
   });
 
-  const handleAddUser = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSubmitting(true);
     const formData = new FormData(e.currentTarget);
@@ -29,11 +30,28 @@ const AdminUsers: React.FC = () => {
       name: formData.get('name') as string,
       email: formData.get('email') as string,
       role: formData.get('role') as UserRole,
-      active: true,
+      active: editingUser ? editingUser.active : true,
     };
-    await addUser(userData);
+    
+    if (editingUser) {
+      await updateUser(editingUser.id, userData);
+    } else {
+      await addUser(userData);
+    }
+
     setSubmitting(false);
     setIsModalOpen(false);
+    setEditingUser(null);
+  };
+
+  const openAddModal = () => {
+    setEditingUser(null);
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (user: User | Driver) => {
+    setEditingUser(user);
+    setIsModalOpen(true);
   };
 
   return (
@@ -44,7 +62,7 @@ const AdminUsers: React.FC = () => {
           <p className="text-slate-500 text-sm">Manage system administrators, clients, and drivers.</p>
         </div>
         <button 
-          onClick={() => setIsModalOpen(true)}
+          onClick={openAddModal}
           className="inline-flex items-center justify-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
         >
           <Plus className="w-4 h-4" />
@@ -135,7 +153,10 @@ const AdminUsers: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <button className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+                       <button 
+                        onClick={() => openEditModal(user)}
+                        className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                      >
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button 
@@ -165,12 +186,13 @@ const AdminUsers: React.FC = () => {
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6 transform animate-in slide-in-from-bottom-4 duration-300">
-            <h2 className="text-xl font-bold text-slate-900 mb-6">Add New User</h2>
-            <form onSubmit={handleAddUser} className="space-y-4">
+            <h2 className="text-xl font-bold text-slate-900 mb-6">{editingUser ? 'Edit User' : 'Add New User'}</h2>
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
                 <input
                   name="name"
+                  defaultValue={editingUser?.name || ''}
                   required
                   className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                 />
@@ -180,6 +202,7 @@ const AdminUsers: React.FC = () => {
                 <input
                   name="email"
                   type="email"
+                  defaultValue={editingUser?.email || ''}
                   required
                   className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                 />
@@ -188,6 +211,7 @@ const AdminUsers: React.FC = () => {
                 <label className="block text-sm font-medium text-slate-700 mb-1">Role</label>
                 <select
                   name="role"
+                  defaultValue={editingUser?.role || 'CLIENT'}
                   className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                 >
                   <option value="CLIENT">Client</option>
@@ -208,7 +232,7 @@ const AdminUsers: React.FC = () => {
                   disabled={submitting}
                   className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm font-medium focus:ring-2 focus:ring-indigo-500/20"
                 >
-                  {submitting ? 'Creating...' : 'Create User'}
+                  {submitting ? 'Processing...' : (editingUser ? 'Save Changes' : 'Create User')}
                 </button>
               </div>
             </form>
