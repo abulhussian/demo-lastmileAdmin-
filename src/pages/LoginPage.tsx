@@ -6,8 +6,23 @@ import { MOCK_USERS, MOCK_DRIVERS } from '../lib/mockData';
 
 export const LoginPage: React.FC = () => {
   const { login } = useLogistics();
-  
-const allUsers = MOCK_USERS.filter(user => user.role !== 'DRIVER');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  const allUsers = MOCK_USERS.filter(user => user.role !== 'DRIVER');
+  const handleLogin = () => {
+    const user = MOCK_USERS.find(
+      (u) => u.email === email && u.password === password
+    );
+
+    if (!user) {
+      setError('Invalid email or password');
+      return;
+    }
+
+    login(user.email);
+  };
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
       {/* Background decoration */}
@@ -16,26 +31,26 @@ const allUsers = MOCK_USERS.filter(user => user.role !== 'DRIVER');
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl"></div>
       </div>
 
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md bg-slate-900 border border-slate-800 p-8 rounded-2xl shadow-2xl relative z-10"
       >
         <div className="flex flex-col items-center mb-8 text-center">
           <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center text-white font-bold text-2xl shadow-lg shadow-indigo-600/20 mb-4">
-            LF
+            LM
           </div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">LogiFlow</h1>
+          <h1 className="text-3xl font-bold text-white tracking-tight">Last Mile</h1>
           <p className="text-slate-400 mt-2">Enterprise Logistics Platform</p>
         </div>
 
         <div className="space-y-4">
           <p className="text-sm font-medium text-slate-500 uppercase tracking-widest text-center px-4">
-            Select an account to login as
+            Enter your credentials to login
           </p>
-          
+
           <div className="grid gap-3">
-            {allUsers.map((user) => (
+            {/* {allUsers.map((user) => (
               <button
                 key={user.email}
                 onClick={() => login(user.email)}
@@ -51,7 +66,35 @@ const allUsers = MOCK_USERS.filter(user => user.role !== 'DRIVER');
                   <p className="text-slate-500 text-xs uppercase tracking-wider">{user.role}</p>
                 </div>
               </button>
-            ))}
+            ))} */}
+            <div className="space-y-4">
+              <input
+                type="email"
+                placeholder="Enter email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white outline-none focus:border-indigo-500"
+              />
+
+              <input
+                type="password"
+                placeholder="Enter password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white outline-none focus:border-indigo-500"
+              />
+
+              {error && (
+                <p className="text-red-400 text-sm">{error}</p>
+              )}
+
+              <button
+                onClick={handleLogin}
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg font-bold transition-all"
+              >
+                Login
+              </button>
+            </div>
           </div>
         </div>
 

@@ -1,10 +1,58 @@
 import { OrderStatus, User, Driver, Order, Invoice } from '../types';
 
 export const MOCK_USERS: User[] = [
-  { id: 'u1', name: 'Alex Admin', email: 'admin@logiflow.com', role: 'ADMIN', active: true },
-  { id: 'u2', name: 'Sarah Client', email: 'sarah@boutique.com', role: 'CLIENT', active: true, companyDetails: { companyName: 'Sarah\'s Boutique', billingEmail: 'billing@sarah.com', phone: '555-0199', address: { street: '123 Fashion Ave', city: 'NYC', state: 'NY', zip: '10001' }, feeType: 'FIXED', feeValue: 15 } },
-  { id: 'u3', name: 'John Tech', email: 'john@techcorp.com', role: 'CLIENT', active: true, companyDetails: { companyName: 'TechCorp Solutions', billingEmail: 'accounts@techcorp.com', phone: '555-0200', address: { street: '101 Tech Blvd', city: 'San Jose', state: 'CA', zip: '95101' }, feeType: 'PERCENTAGE', feeValue: 1.5 } },
+  {
+    id: 'u1',
+    name: 'Alex Admin',
+    email: 'admin@logiflow.com',
+    role: 'ADMIN',
+    active: true,
+    password: '123456'
+  },
+  {
+    id: 'u2',
+    name: 'Sarah Client',
+    email: 'sarah@boutique.com',
+    role: 'CLIENT',
+    active: true,
+    password: '123456', // ✅ added
+    companyDetails: {
+      companyName: "Sarah's Boutique",
+      billingEmail: 'billing@sarah.com',
+      phone: '555-0199',
+      address: {
+        street: '123 Fashion Ave',
+        city: 'NYC',
+        state: 'NY',
+        zip: '10001'
+      },
+      feeType: 'FIXED',
+      feeValue: 15
+    }
+  },
+  {
+    id: 'u3',
+    name: 'John Tech',
+    email: 'john@techcorp.com',
+    role: 'CLIENT',
+    active: true,
+    password: '123456', // ✅ added
+    companyDetails: {
+      companyName: 'TechCorp Solutions',
+      billingEmail: 'accounts@techcorp.com',
+      phone: '555-0200',
+      address: {
+        street: '101 Tech Blvd',
+        city: 'San Jose',
+        state: 'CA',
+        zip: '95101'
+      },
+      feeType: 'PERCENTAGE',
+      feeValue: 1.5
+    }
+  }
 ];
+
 
 export const MOCK_DRIVERS: Driver[] = [
   { id: 'd1', name: 'Mike Mover', email: 'mike@logiflow.com', role: 'DRIVER', active: true, phone: '+1234567890', vehicleNumber: 'V-102', cashInHand: 450, deliveryHistoryIds: [] },
