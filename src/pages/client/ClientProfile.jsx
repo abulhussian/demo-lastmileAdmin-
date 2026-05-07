@@ -1,14 +1,58 @@
 import React, { useState } from 'react';
 import { MainLayout } from '../../components/MainLayout';
 import { useLogistics } from '../../contexts/LogisticsContext';
-import { User, Shield, Phone, Mail, MapPin, Building, CreditCard } from 'lucide-react';
+import { Shield, Phone, Mail, MapPin, Building, CreditCard, Star, CheckCircle, AlertCircle, X } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
-const ClientProfile: React.FC = () => {
-  const { currentUser } = useLogistics();
-  const [activeTab, setActiveTab] = useState<'PERSONAL' | 'BUSINESS'>('PERSONAL');
+const ClientProfile = () => {
+  const { currentUser, updateUser, showToast } = useLogistics();
+  const [activeTab, setActiveTab] = useState('PERSONAL');
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Form states for business info
+  const [billingEmail, setBillingEmail] = useState(currentUser?.companyDetails?.billingEmail || '');
+  const [addressText, setAddressText] = useState(
+    currentUser?.companyDetails?.address
+      ? `${currentUser.companyDetails.address.street}\n${currentUser.companyDetails.address.city}, ${currentUser.companyDetails.address.state} ${currentUser.companyDetails.address.zip}`
+      : ''
+  );
 
   if (!currentUser) return null;
+
+  const handleSaveBusinessInfo = async () => {
+    setIsSaving(true);
+    try {
+      // Parse address text back to object (very basic parsing)
+      const lines = addressText.split('\n');
+      const street = lines[0] || '';
+      const secondLine = lines[1] || '';
+      const [cityState, zip] = secondLine.split(' ');
+      const [city, state] = cityState ? cityState.split(',') : ['', ''];
+
+      const updatedCompanyDetails = {
+        ...currentUser.companyDetails,
+        billingEmail: billingEmail,
+        address: {
+          street: street.trim(),
+          city: (city || '').trim(),
+          state: (state || '').trim(),
+          zip: (zip || '').trim(),
+        }
+      };
+
+      await updateUser(currentUser.id, {
+        ...currentUser,
+        companyDetails: updatedCompanyDetails
+      });
+      
+      showToast('Business information updated successfully!');
+    } catch (error) {
+      console.error('Failed to update business info:', error);
+      showToast(error.message || 'Error updating profile', 'error');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <MainLayout>
@@ -24,24 +68,26 @@ const ClientProfile: React.FC = () => {
               onClick={() => setActiveTab('PERSONAL')}
               className={cn(
                 "px-8 py-4 text-sm font-medium transition-all relative border-r border-slate-200",
-                activeTab === 'PERSONAL' 
-                  ? "bg-white text-indigo-600 after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-indigo-600" 
+                activeTab === 'PERSONAL'
+                  ? "bg-white text-indigo-600 after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-indigo-600"
                   : "text-slate-500 hover:bg-slate-100"
               )}
             >
               Personal Profile
             </button>
-            <button
-              onClick={() => setActiveTab('BUSINESS')}
-              className={cn(
-                "px-8 py-4 text-sm font-medium transition-all relative",
-                activeTab === 'BUSINESS' 
-                  ? "bg-white text-indigo-600 after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-indigo-600" 
-                  : "text-slate-500 hover:bg-slate-100"
-              )}
-            >
-              Business Information
-            </button>
+            {currentUser.role === 'CLIENT' && (
+              <button
+                onClick={() => setActiveTab('BUSINESS')}
+                className={cn(
+                  "px-8 py-4 text-sm font-medium transition-all relative",
+                  activeTab === 'BUSINESS'
+                    ? "bg-white text-indigo-600 after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-indigo-600"
+                    : "text-slate-500 hover:bg-slate-100"
+                )}
+              >
+                Business Information
+              </button>
+            )}
           </div>
 
           <div className="p-8">
@@ -57,10 +103,18 @@ const ClientProfile: React.FC = () => {
                   </div>
                   <div>
                     <h3 className="text-xl font-bold text-slate-900">{currentUser.name}</h3>
-                    <p className="text-slate-500 flex items-center gap-1.5 mt-1">
-                      <Shield className="w-4 h-4" />
-                      Role: {currentUser.role}
-                    </p>
+                    <div className="flex items-center gap-4 mt-1.5">
+                      <p className="text-slate-500 flex items-center gap-1.5 text-sm">
+                        <Shield className="w-4 h-4 text-slate-400" />
+                        Role: <span className="font-bold text-slate-700 capitalize">{currentUser.role?.toLowerCase()}</span>
+                      </p>
+                      {currentUser.rating && (
+                        <p className="text-amber-500 flex items-center gap-1 text-sm font-bold bg-amber-50 px-2 py-0.5 rounded-md border border-amber-100">
+                          <Star className="w-3.5 h-3.5" fill="currentColor" />
+                          {currentUser.rating} Rating
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -81,13 +135,14 @@ const ClientProfile: React.FC = () => {
                         <Phone className="w-4 h-4 text-slate-400" /> Phone Number
                       </span>
                       <input
-                        placeholder="+1 (555) 000-0000"
-                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-700 focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all"
+                        readOnly
+                        value={currentUser.phone || currentUser.companyDetails?.phone || 'Not provided'}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-600 focus:outline-none"
                       />
                     </label>
                   </div>
                   <div className="space-y-4">
-                     <label className="block">
+                    <label className="block">
                       <span className="text-sm font-semibold text-slate-700 flex items-center gap-2 mb-2">
                         Account Status
                       </span>
@@ -99,7 +154,7 @@ const ClientProfile: React.FC = () => {
                   </div>
                 </div>
               </div>
-            ) : (
+            ) : currentUser.role === 'CLIENT' ? (
               <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-6">
@@ -111,6 +166,7 @@ const ClientProfile: React.FC = () => {
                             <Building className="w-4 h-4 text-slate-400" /> Company Name
                           </span>
                           <input
+                            readOnly
                             defaultValue={currentUser.companyDetails?.companyName}
                             className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-700 focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all"
                           />
@@ -121,6 +177,8 @@ const ClientProfile: React.FC = () => {
                           </span>
                           <textarea
                             rows={3}
+                            value={addressText}
+                            onChange={(e) => setAddressText(e.target.value)}
                             placeholder="Street, City, State, ZIP"
                             className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-700 focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all resize-none"
                           />
@@ -147,33 +205,50 @@ const ClientProfile: React.FC = () => {
                             {currentUser.companyDetails?.feeType === 'FIXED' ? `$${currentUser.companyDetails?.feeValue}` : `${currentUser.companyDetails?.feeValue}%`}
                           </span>
                         </div>
-                        
+
                         <div className="space-y-3">
                           <p className="text-xs text-slate-400 leading-relaxed">
-                            Your billing structure is managed by the LogiFlow admin. Contact support to request a rate change.
+                            Your billing structure is managed by the LastMile admin. Contact support to request a rate change.
                           </p>
-                          <button className="w-full py-2 text-sm font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 transition-colors shadow-sm">
-                            Update Invoicing Email
-                          </button>
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 pl-1">
+                              Invoicing Email
+                            </label>
+                            <div className="relative">
+                              <input
+                                type="email"
+                                value={billingEmail}
+                                onChange={(e) => setBillingEmail(e.target.value)}
+                                placeholder="billing@company.com"
+                                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm font-medium"
+                              />
+                              <Mail className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
-            )}
+            ) : null}
 
             <div className="mt-12 pt-8 border-t border-slate-100 flex justify-end gap-3">
               <button className="px-6 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 rounded-xl transition-all">
                 Cancel
               </button>
-              <button className="px-8 py-2.5 text-sm font-semibold text-white bg-slate-900 rounded-xl hover:bg-slate-800 transition-all shadow-md shadow-slate-200">
-                Save Changes
+              <button
+                onClick={handleSaveBusinessInfo}
+                disabled={isSaving}
+                className="px-8 py-2.5 text-sm font-semibold text-white bg-slate-900 rounded-xl hover:bg-slate-800 transition-all shadow-md shadow-slate-200 disabled:opacity-50"
+              >
+                {isSaving ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </div>
         </div>
       </div>
+
     </MainLayout>
   );
 };

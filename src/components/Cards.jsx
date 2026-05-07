@@ -1,20 +1,7 @@
 import React from 'react';
 import { cn, formatCurrency } from '../lib/utils';
-import { LucideIcon } from 'lucide-react';
 
-interface KPICardProps {
-  title: string;
-  value: string | number;
-  icon: LucideIcon;
-  trend?: {
-    value: number;
-    isUp: boolean;
-  };
-  className?: string;
-  isCurrency?: boolean;
-}
-
-export const KPICard: React.FC<KPICardProps> = ({ 
+export const KPICard = ({ 
   title, value, icon: Icon, trend, className, isCurrency 
 }) => {
   return (
@@ -46,7 +33,7 @@ export const KPICard: React.FC<KPICardProps> = ({
   );
 };
 
-export const StatusBadge: React.FC<{ status: string; className?: string }> = ({ status, className }) => {
+export const StatusBadge = ({ status, className }) => {
   const getColors = () => {
     switch (status.toUpperCase()) {
       case 'PENDING': return 'bg-amber-100 text-amber-700 border-amber-200';

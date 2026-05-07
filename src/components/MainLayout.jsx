@@ -1,10 +1,11 @@
 import React from 'react';
 import { Sidebar } from './Sidebar';
-import { Bell, Search, User } from 'lucide-react';
+import { Bell, Search, CheckCircle, AlertCircle, X } from 'lucide-react';
 import { useLogistics } from '../contexts/LogisticsContext';
+import { cn } from '../lib/utils';
 
-export const MainLayout: React.FC<{ children: React.ReactNode; title: string }> = ({ children, title }) => {
-  const { currentUser } = useLogistics();
+export const MainLayout = ({ children, title }) => {
+  const { currentUser, toast, showToast } = useLogistics();
 
   return (
     <div className="flex bg-[#F8FAFC] min-h-screen">
@@ -31,7 +32,7 @@ export const MainLayout: React.FC<{ children: React.ReactNode; title: string }> 
             </button>
             <div className="h-8 w-px bg-slate-100 mx-1"></div>
             <div className="w-9 h-9 bg-slate-900 text-white rounded-lg flex items-center justify-center font-bold text-xs">
-              {currentUser?.name.charAt(0)}
+              {currentUser?.name?.charAt(0) || 'U'}
             </div>
           </div>
         </header>
@@ -41,6 +42,29 @@ export const MainLayout: React.FC<{ children: React.ReactNode; title: string }> 
           {children}
         </main>
       </div>
+      
+      {/* Global Toast Notification - Top Left */}
+      {toast.show && (
+        <div className={cn(
+          "fixed top-6 left-6 z-[100] flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl border animate-in slide-in-from-left-10 duration-300",
+          toast.type === 'success' 
+            ? "bg-emerald-50 border-emerald-100 text-emerald-800" 
+            : "bg-rose-50 border-rose-100 text-rose-800"
+        )}>
+          {toast.type === 'success' ? (
+            <CheckCircle className="w-5 h-5 text-emerald-500" />
+          ) : (
+            <AlertCircle className="w-5 h-5 text-rose-500" />
+          )}
+          <p className="text-sm font-bold">{toast.message}</p>
+          <button 
+            onClick={() => showToast('', 'success')} // This will hide it since message is empty
+            className="ml-4 p-1 hover:bg-black/5 rounded-lg transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
     </div>
   );
 };

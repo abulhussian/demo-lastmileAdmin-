@@ -1,6 +1,6 @@
-import { OrderStatus, User, Driver, Order, Invoice } from '../types';
+import { OrderStatus } from './utils';
 
-export const MOCK_USERS: User[] = [
+export const MOCK_USERS = [
   {
     id: 'u1',
     name: 'Alex Admin',
@@ -15,7 +15,7 @@ export const MOCK_USERS: User[] = [
     email: 'sarah@boutique.com',
     role: 'CLIENT',
     active: true,
-    password: '123456', // ✅ added
+    password: '123456',
     companyDetails: {
       companyName: "Sarah's Boutique",
       billingEmail: 'billing@sarah.com',
@@ -36,7 +36,7 @@ export const MOCK_USERS: User[] = [
     email: 'john@techcorp.com',
     role: 'CLIENT',
     active: true,
-    password: '123456', // ✅ added
+    password: '123456',
     companyDetails: {
       companyName: 'TechCorp Solutions',
       billingEmail: 'accounts@techcorp.com',
@@ -54,12 +54,12 @@ export const MOCK_USERS: User[] = [
 ];
 
 
-export const MOCK_DRIVERS: Driver[] = [
+export const MOCK_DRIVERS = [
   { id: 'd1', name: 'Mike Mover', email: 'mike@logiflow.com', role: 'DRIVER', active: true, phone: '+1234567890', vehicleNumber: 'V-102', cashInHand: 450, deliveryHistoryIds: [] },
   { id: 'd2', name: 'Dave Delivery', email: 'dave@logiflow.com', role: 'DRIVER', active: true, phone: '+1234567891', vehicleNumber: 'V-105', cashInHand: 120, deliveryHistoryIds: [] },
 ];
 
-export const MOCK_ORDERS: Order[] = [
+export const MOCK_ORDERS = [
   {
     id: 'ord1',
     trackingId: 'LF-98231',
@@ -125,7 +125,7 @@ export const MOCK_ORDERS: Order[] = [
   }
 ];
 
-export const MOCK_INVOICES: Invoice[] = [
+export const MOCK_INVOICES = [
   {
     id: 'inv1',
     clientId: 'u2',

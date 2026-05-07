@@ -1,27 +1,23 @@
 import React, { useState } from 'react';
 import { useLogistics } from '../contexts/LogisticsContext';
-import { LogIn, Truck, Building2, ShieldCheck } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import { motion } from 'motion/react';
-import { MOCK_USERS, MOCK_DRIVERS } from '../lib/mockData';
+import { Link } from 'react-router-dom';
 
-export const LoginPage: React.FC = () => {
+export const LoginPage = () => {
   const { login } = useLogistics();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
 
-  const allUsers = MOCK_USERS.filter(user => user.role !== 'DRIVER');
-  const handleLogin = () => {
-    const user = MOCK_USERS.find(
-      (u) => u.email === email && u.password === password
-    );
-
-    if (!user) {
-      setError('Invalid email or password');
-      return;
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    try {
+      await login(email, password);
+    } catch (err) {
+      setError(err.message || 'Invalid email or password');
     }
-
-    login(user.email);
   };
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
@@ -50,23 +46,6 @@ export const LoginPage: React.FC = () => {
           </p>
 
           <div className="grid gap-3">
-            {/* {allUsers.map((user) => (
-              <button
-                key={user.email}
-                onClick={() => login(user.email)}
-                className="flex items-center gap-4 p-4 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-500 transition-all text-left group"
-              >
-                <div className="w-10 h-10 rounded-lg bg-slate-900 flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform">
-                  {user.role === 'ADMIN' && <ShieldCheck size={20} />}
-                  {user.role === 'CLIENT' && <Building2 size={20} />}
-                  {user.role === 'DRIVER' && <Truck size={20} />}
-                </div>
-                <div>
-                  <p className="text-white font-semibold text-sm">{user.name}</p>
-                  <p className="text-slate-500 text-xs uppercase tracking-wider">{user.role}</p>
-                </div>
-              </button>
-            ))} */}
             <div className="space-y-4">
               <input
                 type="email"
@@ -76,17 +55,35 @@ export const LoginPage: React.FC = () => {
                 className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white outline-none focus:border-indigo-500"
               />
 
-              <input
-                type="password"
-                placeholder="Enter password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white outline-none focus:border-indigo-500"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white outline-none focus:border-indigo-500 pr-12"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
 
               {error && (
                 <p className="text-red-400 text-sm">{error}</p>
               )}
+
+              <div className="flex justify-end">
+                <Link 
+                  to="/forgot-password" 
+                  className="text-xs font-bold text-indigo-400 hover:text-indigo-300 transition-colors"
+                >
+                  Forgot Password?
+                </Link>
+              </div>
 
               <button
                 onClick={handleLogin}

@@ -1,13 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { MainLayout } from '../../components/MainLayout';
 import { useLogistics } from '../../contexts/LogisticsContext';
 import { KPICard } from '../../components/Cards';
-import { Banknote, History, Wallet, ArrowDownCircle, ArrowUpCircle, CheckCircle2 } from 'lucide-react';
+import { Wallet, ArrowDownCircle, ArrowUpCircle, CheckCircle2, History, AlertCircle, CheckCircle, X } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../lib/utils';
 import { cn } from '../../lib/utils';
 
-export const AdminCash: React.FC = () => {
-  const { drivers, settlements, settleDriverCash } = useLogistics();
+export const AdminCash = () => {
+  const { drivers, settlements, settleDriverCash, showToast } = useLogistics();
 
   const totalCashInHand = drivers.reduce((sum, d) => sum + d.cashInHand, 0);
   const totalSettledToday = settlements.reduce((sum, s) => sum + s.amount, 0);
@@ -43,7 +43,6 @@ export const AdminCash: React.FC = () => {
           </div>
           <div className="divide-y divide-slate-50 max-h-[500px] overflow-y-auto">
             {settlements.length > 0 ? settlements.map((log) => {
-              const driver = drivers.find(d => d.id === log.driverId);
               return (
                 <div key={log.id} className="p-6 flex items-center justify-between hover:bg-slate-50/50 transition-colors">
                   <div className="flex items-center gap-4">
@@ -51,7 +50,7 @@ export const AdminCash: React.FC = () => {
                       <ArrowDownCircle size={20} />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-slate-900">{driver?.name}</p>
+                      <p className="text-sm font-bold text-slate-900">{log.driverName}</p>
                       <p className="text-[10px] text-slate-400 font-medium">{formatDate(log.date)} • Admin Collection</p>
                     </div>
                   </div>
@@ -98,8 +97,17 @@ export const AdminCash: React.FC = () => {
                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">In Hand</p>
                   </div>
                   <button 
-                    className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-lg shadow-indigo-100 hover:bg-slate-900 transition-all active:scale-95"
-                    onClick={() => settleDriverCash(driver.id)}
+                    className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-lg shadow-indigo-100 hover:bg-slate-900 transition-all active:scale-95 disabled:opacity-50"
+                    onClick={async () => {
+                      if (confirm(`Collect ${formatCurrency(driver.cashInHand)} from ${driver.name}?`)) {
+                        try {
+                          await settleDriverCash(driver.id, driver.cashInHand);
+                          showToast(`Successfully collected ${formatCurrency(driver.cashInHand)} from ${driver.name}`);
+                        } catch (err) {
+                          showToast(err.message || 'Failed to settle cash', 'error');
+                        }
+                      }
+                    }}
                   >
                     Collect
                   </button>

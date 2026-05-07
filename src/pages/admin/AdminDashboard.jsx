@@ -13,8 +13,6 @@ import {
   AlertCircle 
 } from 'lucide-react';
 import { 
-  BarChart, 
-  Bar, 
   XAxis, 
   YAxis, 
   CartesianGrid, 
@@ -23,8 +21,7 @@ import {
   AreaChart,
   Area
 } from 'recharts';
-import { OrderStatus } from '../../types';
-import { cn, formatCurrency } from '../../lib/utils';
+import { cn } from '../../lib/utils';
 
 const chartData = [
   { name: 'Mon', orders: 45, revenue: 1200 },
@@ -36,17 +33,17 @@ const chartData = [
   { name: 'Sun', orders: 28, revenue: 750 },
 ];
 
-export const AdminDashboard: React.FC = () => {
+export const AdminDashboard = () => {
   const navigate = useNavigate();
   const { orders, drivers } = useLogistics();
 
   const totalOrders = orders.length;
   const activeDrivers = drivers.filter(d => d.active).length;
-  const totalRevenue = orders.reduce((sum, o) => sum + o.orderValue, 0);
-  const driverCash = drivers.reduce((sum, d) => sum + d.cashInHand, 0);
+  const totalRevenue = orders.reduce((sum, o) => sum + (Number(o.orderValue) || 0), 0);
+  const driverCash = drivers.reduce((sum, d) => sum + (Number(d.cashInHand) || 0), 0);
 
-  const pendingOrders = orders.filter(o => o.status === OrderStatus.PENDING).length;
-  const deliveredToday = orders.filter(o => o.status === OrderStatus.DELIVERED).length;
+  const pendingOrders = orders.filter(o => o.status === 'PENDING').length;
+  const deliveredToday = orders.filter(o => o.status === 'DELIVERED').length;
 
   return (
     <MainLayout title="Admin Overview">

@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { LogisticsProvider, useLogistics } from './contexts/LogisticsContext';
 import { LoginPage } from './pages/LoginPage';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { AdminOrders } from './pages/admin/AdminOrders';
 import { AdminDrivers } from './pages/admin/AdminDrivers';
@@ -16,7 +17,13 @@ const AppRoutes = () => {
   const { currentUser } = useLogistics();
 
   if (!currentUser) {
-    return <LoginPage />;
+    return (
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    );
   }
 
   const isAdmin = currentUser.role === 'ADMIN';

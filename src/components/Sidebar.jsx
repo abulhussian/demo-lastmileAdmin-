@@ -7,7 +7,6 @@ import {
   Users, 
   Banknote, 
   FileText, 
-  Settings, 
   LogOut,
   ChevronRight,
   UserCircle
@@ -15,7 +14,7 @@ import {
 import { useLogistics } from '../contexts/LogisticsContext';
 import { cn } from '../lib/utils';
 
-export const Sidebar: React.FC = () => {
+export const Sidebar = () => {
   const { currentUser, logout } = useLogistics();
   const isAdmin = currentUser?.role === 'ADMIN';
 
@@ -42,9 +41,9 @@ export const Sidebar: React.FC = () => {
     <div className="w-64 h-screen bg-slate-900 text-slate-300 flex flex-col border-r border-slate-800">
       <div className="p-6 flex items-center gap-3">
         <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold">
-          LF
+          LM
         </div>
-        <span className="text-xl font-bold text-white tracking-tight">LogiFlow</span>
+        <span className="text-xl font-bold text-white tracking-tight">Last Mile</span>
       </div>
 
       <nav className="flex-1 mt-4 px-4 space-y-1">
@@ -52,16 +51,21 @@ export const Sidebar: React.FC = () => {
           <NavLink
             key={link.name}
             to={link.path}
+            end={link.path === '/admin' || link.path === '/client'}
             className={({ isActive }) => cn(
-              "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group text-sm font-medium",
+              "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group text-sm font-medium border border-transparent",
               isActive 
-                ? "bg-indigo-600/10 text-indigo-400 border border-indigo-500/20" 
+                ? "bg-indigo-600/10 text-indigo-400 border-indigo-500/20 shadow-sm shadow-indigo-500/5" 
                 : "hover:bg-slate-800 hover:text-white"
             )}
           >
-            <link.icon size={18} className={cn("transition-colors", "group-hover:text-indigo-400")} />
-            <span className="flex-1">{link.name}</span>
-            <ChevronRight size={14} className="opacity-0 group-hover:opacity-40 transition-opacity" />
+            {({ isActive }) => (
+              <>
+                <link.icon size={18} className={cn("transition-colors", isActive ? "text-indigo-400" : "group-hover:text-white")} />
+                <span className="flex-1">{link.name}</span>
+                <ChevronRight size={14} className={cn("transition-all", isActive ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-2 group-hover:opacity-40 group-hover:translate-x-0")} />
+              </>
+            )}
           </NavLink>
         ))}
       </nav>
@@ -75,7 +79,7 @@ export const Sidebar: React.FC = () => {
           )}
         >
           <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center border border-slate-600 uppercase text-xs font-bold text-slate-300">
-            {currentUser?.name.charAt(0)}
+            {currentUser?.name?.charAt(0) || 'U'}
           </div>
           <div className="flex-1 overflow-hidden">
             <p className="text-sm font-semibold text-white truncate">{currentUser?.name}</p>

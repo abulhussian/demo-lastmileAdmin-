@@ -1,17 +1,20 @@
 import React, { useState } from 'react';
 import { MainLayout } from '../components/MainLayout';
 import { useLogistics } from '../contexts/LogisticsContext';
-import { Package, Upload, ArrowLeft, CheckCircle2, FileSpreadsheet, X } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Upload, ArrowLeft, CheckCircle2, FileSpreadsheet, X, MapPin } from 'lucide-react';
+import { MapPicker } from '../components/MapPicker';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../lib/utils';
 
-export const ClientCreateOrder: React.FC = () => {
-  const { createOrder } = useLogistics();
+export const ClientCreateOrder = () => {
+  const { createOrder, bulkCreateOrders, currentUser } = useLogistics();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'SINGLE' | 'BULK'>('SINGLE');
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'SINGLE');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [bulkFile, setBulkFile] = useState<File | null>(null);
+  const [bulkFile, setBulkFile] = useState(null);
+  const [mapModal, setMapModal] = useState(null);
 
   const [formData, setFormData] = useState({
     customerName: '',
@@ -21,12 +24,31 @@ export const ClientCreateOrder: React.FC = () => {
     pickupStreet: '',
     pickupCity: '',
     pickupZip: '',
+    pickupLat: undefined,
+    pickupLng: undefined,
+    pickupAddressFull: '',
     deliveryStreet: '',
     deliveryCity: '',
     deliveryZip: '',
+    deliveryLat: undefined,
+    deliveryLng: undefined,
+    deliveryAddressFull: '',
+    feeType: '',
+    feeValue: '',
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Auto-populate client fees
+  React.useEffect(() => {
+    if (currentUser?.role === 'CLIENT' && currentUser.companyDetails) {
+      setFormData(prev => ({
+        ...prev,
+        feeType: currentUser.companyDetails.feeType || 'FIXED',
+        feeValue: currentUser.companyDetails.feeValue || 0
+      }));
+    }
+  }, [currentUser]);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     
@@ -35,32 +57,72 @@ export const ClientCreateOrder: React.FC = () => {
       customerPhone: formData.customerPhone,
       orderValue: Number(formData.orderValue),
       codAmount: Number(formData.codAmount),
-      pickupAddress: { street: formData.pickupStreet, city: formData.pickupCity, state: 'NY', zip: formData.pickupZip },
-      deliveryAddress: { street: formData.deliveryStreet, city: formData.deliveryCity, state: 'NY', zip: formData.deliveryZip },
+      pickupAddress: { 
+        street: formData.pickupStreet, 
+        city: formData.pickupCity, 
+        state: 'NY', 
+        zip: formData.pickupZip,
+        lat: formData.pickupLat,
+        lng: formData.pickupLng
+      },
+      deliveryAddress: { 
+        street: formData.deliveryStreet, 
+        city: formData.deliveryCity, 
+        state: 'NY', 
+        zip: formData.deliveryZip,
+        lat: formData.deliveryLat,
+        lng: formData.deliveryLng
+      },
+      clientId: currentUser?.id,
+      deliveryFee: Number(formData.feeValue || 0),
+      feeType: formData.feeType,
+      feeValue: Number(formData.feeValue || 0)
     });
     
     setIsSubmitting(false);
     navigate('/client/orders');
   };
 
-  const handleBulkUpload = async () => {
-    setIsSubmitting(true);
-    // Simulate multi-creation from bulk
-    for(let i=0; i<3; i++) {
-      await createOrder({
-        customerName: `Bulk Item ${i+1}`,
-        customerPhone: `+1-555-000${i}`,
-        orderValue: 400,
-        codAmount: 0,
-        pickupAddress: { street: 'Main Warehouse', city: 'NYC', state: 'NY', zip: '10001' },
-        deliveryAddress: { street: `Retail Outlet ${i+1}`, city: 'NYC', state: 'NY', zip: '10002' },
+  const handleMapConfirm = (data) => {
+    if (mapModal === 'PICKUP') {
+      setFormData({
+        ...formData,
+        pickupStreet: data.street,
+        pickupCity: data.city,
+        pickupZip: data.zip,
+        pickupLat: data.lat,
+        pickupLng: data.lng,
+        pickupAddressFull: data.address
+      });
+    } else if (mapModal === 'DELIVERY') {
+      setFormData({
+        ...formData,
+        deliveryStreet: data.street,
+        deliveryCity: data.city,
+        deliveryZip: data.zip,
+        deliveryLat: data.lat,
+        deliveryLng: data.lng,
+        deliveryAddressFull: data.address
       });
     }
-    setIsSubmitting(false);
-    navigate('/client/orders');
+    setMapModal(null);
+  };
+
+  const handleBulkUpload = async () => {
+    if (!bulkFile) return;
+    setIsSubmitting(true);
+    try {
+      await bulkCreateOrders(bulkFile);
+      navigate('/client/orders');
+    } catch (err) {
+      alert(err.message || 'Failed to upload bulk orders');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
+    <>
     <MainLayout title="Logistics Request">
       <div className="max-w-4xl mx-auto">
         <Link to="/client" className="flex items-center gap-2 text-slate-500 hover:text-indigo-600 transition-colors mb-6 text-sm font-medium">
@@ -119,10 +181,16 @@ export const ClientCreateOrder: React.FC = () => {
                       <label className="text-sm font-semibold text-slate-700">Phone Number</label>
                       <input 
                         required
+                        type="tel"
+                        pattern="[0-9]{10}"
+                        maxLength={10}
                         className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" 
-                        placeholder="+1 (xxx) xxx-xxxx"
+                        placeholder="10 digit number"
                         value={formData.customerPhone}
-                        onChange={e => setFormData({...formData, customerPhone: e.target.value})}
+                        onChange={e => {
+                          const val = e.target.value.replace(/[^0-9]/g, '').slice(0, 10);
+                          setFormData({...formData, customerPhone: val});
+                        }}
                       />
                     </div>
                   </div>
@@ -131,7 +199,17 @@ export const ClientCreateOrder: React.FC = () => {
                 {/* Section: Addresses */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
                   <div className="space-y-4">
-                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Pickup Location</h3>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Pickup Location</h3>
+                      <button 
+                        type="button"
+                        onClick={() => setMapModal('PICKUP')}
+                        className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 bg-indigo-50 px-2 py-1 rounded transition-colors"
+                      >
+                        <MapPin size={12} />
+                        Select from Map
+                      </button>
+                    </div>
                     <input 
                       required
                       placeholder="Street Address" 
@@ -155,9 +233,25 @@ export const ClientCreateOrder: React.FC = () => {
                         onChange={e => setFormData({...formData, pickupZip: e.target.value})}
                       />
                     </div>
+                    <input 
+                      placeholder="Full Address" 
+                      readOnly
+                      className="w-full px-4 py-2 bg-slate-50/50 border border-slate-200 rounded-lg outline-none text-xs text-slate-500 italic" 
+                      value={formData.pickupAddressFull}
+                    />
                   </div>
                   <div className="space-y-4">
-                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 text-indigo-600">Delivery Location</h3>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest text-indigo-600">Delivery Location</h3>
+                      <button 
+                        type="button"
+                        onClick={() => setMapModal('DELIVERY')}
+                        className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 bg-indigo-50 px-2 py-1 rounded transition-colors"
+                      >
+                        <MapPin size={12} />
+                        Select from Map
+                      </button>
+                    </div>
                     <input 
                       required
                       placeholder="Destination Street" 
@@ -181,10 +275,16 @@ export const ClientCreateOrder: React.FC = () => {
                         onChange={e => setFormData({...formData, deliveryZip: e.target.value})}
                       />
                     </div>
+                    <input 
+                      placeholder="Full Address" 
+                      readOnly
+                      className="w-full px-4 py-2 bg-slate-50/50 border border-slate-200 rounded-lg outline-none text-xs text-slate-500 italic" 
+                      value={formData.deliveryAddressFull}
+                    />
                   </div>
                 </div>
 
-                {/* Section: Payments */}
+                {/* Section: Payments & Fees */}
                 <div>
                   <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Value & Settlement</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-indigo-50 rounded-xl border border-indigo-100">
@@ -192,6 +292,9 @@ export const ClientCreateOrder: React.FC = () => {
                       <label className="text-sm font-semibold text-slate-700">Total Order Value ($)</label>
                       <input 
                         type="number"
+                        required
+                        min="0.01"
+                        step="0.01"
                         placeholder="0.00"
                         className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg outline-none" 
                         value={formData.orderValue}
@@ -202,12 +305,42 @@ export const ClientCreateOrder: React.FC = () => {
                       <label className="text-sm font-semibold text-slate-700">COD Amount to Collect ($)</label>
                       <input 
                         type="number"
-                        placeholder="Leave 0 if prepaid"
+                        required
+                        min="0.01"
+                        step="0.01"
+                        placeholder="Amount to collect"
                         className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg outline-none text-indigo-600 font-bold" 
                         value={formData.codAmount}
                         onChange={e => setFormData({...formData, codAmount: e.target.value})}
                       />
                     </div>
+
+                    {/* Admin Fee Options */}
+                    {currentUser?.role === 'ADMIN' && (
+                      <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-indigo-100/50 mt-2 animate-in fade-in slide-in-from-top-2">
+                        <div className="space-y-1.5">
+                          <label className="text-sm font-bold text-indigo-600">Fee Type</label>
+                          <select 
+                            className="w-full px-4 py-2 bg-white border border-indigo-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20"
+                            value={formData.feeType}
+                            onChange={e => setFormData({...formData, feeType: e.target.value})}
+                          >
+                            <option value="FIXED">Fixed per Delivery</option>
+                            <option value="PERCENTAGE">Percentage of Value</option>
+                          </select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-sm font-bold text-indigo-600">Fee Value</label>
+                          <input 
+                            type="number"
+                            className="w-full px-4 py-2 bg-white border border-indigo-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20"
+                            placeholder="30"
+                            value={formData.feeValue}
+                            onChange={e => setFormData({...formData, feeValue: e.target.value})}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -282,6 +415,14 @@ export const ClientCreateOrder: React.FC = () => {
         </AnimatePresence>
       </div>
     </MainLayout>
+    {mapModal && (
+      <MapPicker 
+        title={mapModal === 'PICKUP' ? 'Select Pickup Location' : 'Select Delivery Location'}
+        onClose={() => setMapModal(null)}
+        onConfirm={handleMapConfirm}
+      />
+    )}
+</>
   );
 };
 

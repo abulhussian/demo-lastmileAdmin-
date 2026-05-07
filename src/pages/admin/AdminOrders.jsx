@@ -3,15 +3,24 @@ import { MainLayout } from '../../components/MainLayout';
 import { useLogistics } from '../../contexts/LogisticsContext';
 import { StatusBadge } from '../../components/Cards';
 import { formatCurrency, formatDate, cn } from '../../lib/utils';
-import { Filter, Search, MoreVertical, MapPin, Phone, User as UserIcon, Plus, Package, X, Truck, Calendar, Download, Upload } from 'lucide-react';
-import { OrderStatus, Order } from '../../types';
+import { Search, MoreVertical, MapPin, Phone, User as UserIcon, Plus, Package, X, Truck, Download, Upload, FileSpreadsheet, CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 
-export const AdminOrders: React.FC = () => {
-  const { orders, drivers, updateOrderStatus, assignDriver, createOrder, deleteOrder, currentUser } = useLogistics();
+const OrderStatus = {
+  PENDING: 'PENDING',
+  ASSIGNED: 'ASSIGNED',
+  PICKED_UP: 'PICKED_UP',
+  IN_TRANSIT: 'IN_TRANSIT',
+  DELIVERED: 'DELIVERED',
+  CANCELLED: 'CANCELLED'
+};
+
+export const AdminOrders = () => {
+  const { orders, drivers, updateOrderStatus, assignDriver, createOrder, deleteOrder, currentUser, bulkCreateOrders } = useLogistics();
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('ALL');
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [selectedOrder, setSelectedOrder] = useState(null);
   const [showAssignForm, setShowAssignForm] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const navigate = useNavigate();
@@ -22,22 +31,13 @@ export const AdminOrders: React.FC = () => {
     // Client security filter
     if (!isAdmin && order.clientId !== currentUser?.id) return false;
 
-    const matchesSearch = 
-      order.trackingId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.clientName.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch =
+      (order.trackingId || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (order.customerName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (order.clientName || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'ALL' || order.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
-
-  const handleBulkUpload = async () => {
-    alert('Simulating CSV Upload: Processing 50 rows...');
-    await createOrder({ 
-      trackingId: `BULK-${Math.random().toString(36).substr(2, 5).toUpperCase()}`,
-      customerName: 'CSV Bulk Client',
-      clientName: 'Enterprise Logistics'
-    } as any);
-  };
 
   const handleExport = () => {
     const data = JSON.stringify(filteredOrders, null, 2);
@@ -57,15 +57,15 @@ export const AdminOrders: React.FC = () => {
           <div className="flex items-center gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-              <input 
-                type="text" 
-                placeholder="Tracking ID, Name..." 
+              <input
+                type="text"
+                placeholder="Tracking ID, Name..."
                 className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium outline-none focus:border-blue-500 w-56 focus:bg-white transition-all shadow-inner"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <select 
+            <select
               className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-600 outline-none hover:bg-white cursor-pointer transition-all"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
@@ -78,22 +78,22 @@ export const AdminOrders: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <button 
-              onClick={handleBulkUpload}
+            <button
+              onClick={() => navigate('/create-order', { state: { activeTab: 'BULK' } })}
               className="flex items-center gap-2 bg-white text-slate-600 border border-slate-200 px-4 py-2.5 rounded-lg text-xs font-bold hover:bg-slate-50 transition-colors"
             >
               <Upload size={14} />
               Bulk Upload
             </button>
-            <button 
+            <button
               onClick={handleExport}
               className="flex items-center gap-2 bg-white text-slate-600 border border-slate-200 px-4 py-2.5 rounded-lg text-xs font-bold hover:bg-slate-50 transition-colors"
             >
               <Download size={14} />
               Export
             </button>
-            <button 
-             onClick={() => navigate('/create-order')}
+            <button
+              onClick={() => navigate('/create-order')}
               className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-lg text-xs font-bold hover:bg-indigo-700 transition-colors shadow-md"
             >
               <Plus size={14} />
@@ -117,10 +117,13 @@ export const AdminOrders: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredOrders.map((order) => (
-                <tr 
-                  key={order.id} 
-                  className="hover:bg-[#F8FAFC] transition-colors group cursor-pointer"
-                  onClick={() => setSelectedOrder(order)}
+                <tr
+                  key={order.id}
+                  className={cn(
+                    "hover:bg-[#F8FAFC] transition-colors group",
+                    isAdmin ? "cursor-pointer" : "cursor-default"
+                  )}
+                  onClick={() => isAdmin && setSelectedOrder(order)}
                 >
                   <td className="px-6 py-5">
                     <div className="flex items-center gap-3">
@@ -134,10 +137,16 @@ export const AdminOrders: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-6 py-5">
-                    <p className="text-[13px] font-bold text-slate-700">{order.clientName}</p>
+                    <p className="text-[13px] font-bold text-slate-700">
+                      {currentUser?.role === 'CLIENT' ? order.customerName : order.clientName}
+                    </p>
                     <div className="flex items-center gap-1.5 text-slate-400 mt-0.5">
                       <MapPin size={10} className="flex-shrink-0" />
-                      <span className="text-[11px] font-medium truncate max-w-[140px]">{order.deliveryAddress.city}, {order.deliveryAddress.state}</span>
+                      <span className="text-[11px] font-medium truncate max-w-[140px]">
+                        {order.deliveryAddress?.city
+                          ? `${order.deliveryAddress.street}, ${order.deliveryAddress.city}`
+                          : order.deliveryAddress?.street || 'N/A'}
+                      </span>
                     </div>
                   </td>
                   <td className="px-6 py-5">
@@ -156,8 +165,8 @@ export const AdminOrders: React.FC = () => {
                     <StatusBadge status={order.status} />
                   </td>
                   <td className="px-6 py-5">
-                     <p className="text-[12px] font-bold text-slate-700">{formatCurrency(order.deliveryFee)}</p>
-                     {order.codAmount > 0 && <p className="text-[10px] text-emerald-600 font-bold uppercase">COD: {formatCurrency(order.codAmount)}</p>}
+                    <p className="text-[12px] font-bold text-slate-700">{formatCurrency(order.deliveryFee)}</p>
+                    {order.codAmount > 0 && <p className="text-[10px] text-emerald-600 font-bold uppercase">COD: {formatCurrency(order.codAmount)}</p>}
                   </td>
                   <td className="px-6 py-5 text-right" onClick={(e) => e.stopPropagation()}>
                     <button className="p-2 text-slate-300 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-all">
@@ -208,33 +217,41 @@ export const AdminOrders: React.FC = () => {
                   <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Recipient</h4>
                   <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 space-y-3">
                     <p className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                       <UserIcon size={14} className="text-slate-400" /> {selectedOrder.customerName}
+                      <UserIcon size={14} className="text-slate-400" /> {selectedOrder.customerName}
                     </p>
                     <p className="text-sm font-medium text-slate-600 flex items-center gap-2">
-                       <Phone size={14} className="text-slate-400" /> {selectedOrder.customerPhone}
+                      <Phone size={14} className="text-slate-400" /> {selectedOrder.customerPhone}
                     </p>
                   </div>
                 </div>
 
                 <div>
-                   <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Route Progress</h4>
-                   <div className="space-y-4">
-                     <div className="relative pl-6">
-                       <div className="absolute left-0 top-1 w-3 h-3 rounded-full bg-indigo-500 border-2 border-white shadow-sm z-10" />
-                       <p className="text-[10px] font-bold text-slate-400 uppercase whitespace-nowrap">Pickup Address</p>
-                       <p className="text-[12px] font-medium text-slate-700 mt-0.5">{selectedOrder.pickupAddress.street}, {selectedOrder.pickupAddress.city}</p>
-                     </div>
-                     <div className="relative pl-6">
-                       <div className="absolute left-0 top-1 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white shadow-sm z-10" />
-                       <p className="text-[10px] font-bold text-slate-400 uppercase whitespace-nowrap">Delivery Address</p>
-                       <p className="text-[12px] font-medium text-slate-700 mt-0.5">{selectedOrder.deliveryAddress.street}, {selectedOrder.deliveryAddress.city}</p>
-                     </div>
-                   </div>
+                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Route Progress</h4>
+                  <div className="space-y-4">
+                    <div className="relative pl-6">
+                      <div className="absolute left-0 top-1 w-3 h-3 rounded-full bg-indigo-500 border-2 border-white shadow-sm z-10" />
+                      <p className="text-[10px] font-bold text-slate-400 uppercase whitespace-nowrap">Pickup Address</p>
+                      <p className="text-[12px] font-medium text-slate-700 mt-0.5">
+                        {selectedOrder.pickupAddress?.city
+                          ? `${selectedOrder.pickupAddress.street}, ${selectedOrder.pickupAddress.city}`
+                          : selectedOrder.pickupAddress?.street || 'N/A'}
+                      </p>
+                    </div>
+                    <div className="relative pl-6">
+                      <div className="absolute left-0 top-1 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white shadow-sm z-10" />
+                      <p className="text-[10px] font-bold text-slate-400 uppercase whitespace-nowrap">Delivery Address</p>
+                      <p className="text-[12px] font-medium text-slate-700 mt-0.5">
+                        {selectedOrder.deliveryAddress?.city
+                          ? `${selectedOrder.deliveryAddress.street}, ${selectedOrder.deliveryAddress.city}`
+                          : selectedOrder.deliveryAddress?.street || 'N/A'}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
 
               <div className="space-y-6">
-                 <div>
+                <div>
                   <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Finance Summary</h4>
                   <div className="bg-slate-900 rounded-xl p-5 text-white space-y-3 shadow-xl">
                     <div className="flex justify-between items-center">
@@ -254,23 +271,23 @@ export const AdminOrders: React.FC = () => {
                   <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Driver Assignment</h4>
                   <div className="space-y-3">
                     {selectedOrder.driverId ? (
-                       <div className="flex items-center justify-between p-3 bg-indigo-50 rounded-xl border border-indigo-100">
-                         <div className="flex items-center gap-3">
-                           <div className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-700 text-xs font-bold border border-indigo-200">
-                             {selectedOrder.driverName?.charAt(0)}
-                           </div>
-                           <p className="text-sm font-bold text-indigo-950">{selectedOrder.driverName}</p>
-                         </div>
-                         <button onClick={() => setShowAssignForm(true)} className="text-[11px] font-bold text-indigo-600 hover:underline">Change</button>
-                       </div>
+                      <div className="flex items-center justify-between p-3 bg-indigo-50 rounded-xl border border-indigo-100">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-700 text-xs font-bold border border-indigo-200">
+                            {selectedOrder.driverName?.charAt(0)}
+                          </div>
+                          <p className="text-sm font-bold text-indigo-950">{selectedOrder.driverName}</p>
+                        </div>
+                        <button onClick={() => setShowAssignForm(true)} className="text-[11px] font-bold text-indigo-600 hover:underline">Change</button>
+                      </div>
                     ) : (
-                      <button 
-                         onClick={() => setShowAssignForm(true)}
-                         className="w-full py-4 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50 transition-all text-xs font-bold flex flex-col items-center gap-2"
-                       >
-                         <Truck size={24} />
-                         Assign Driver
-                       </button>
+                      <button
+                        onClick={() => setShowAssignForm(true)}
+                        className="w-full py-4 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50 transition-all text-xs font-bold flex flex-col items-center gap-2"
+                      >
+                        <Truck size={24} />
+                        Assign Driver
+                      </button>
                     )}
 
                     {showAssignForm && (
@@ -278,11 +295,16 @@ export const AdminOrders: React.FC = () => {
                         <p className="text-[10px] font-bold text-slate-400 uppercase">Available Drivers</p>
                         <div className="max-h-40 overflow-y-auto space-y-1">
                           {drivers.filter(d => d.active).map(driver => (
-                            <button 
+                            <button
                               key={driver.id}
                               onClick={async () => {
-                                await assignDriver(selectedOrder.id, driver.id);
-                                setShowAssignForm(false);
+                                try {
+                                  await assignDriver(selectedOrder.id, driver.id);
+                                  setSelectedOrder({ ...selectedOrder, driverId: driver.id, driverName: driver.name });
+                                  setShowAssignForm(false);
+                                } catch (err) {
+                                  console.error(err);
+                                }
                               }}
                               className="w-full text-left px-3 py-2 hover:bg-slate-50 rounded-lg text-sm font-medium text-slate-700 transition-colors"
                             >
@@ -299,35 +321,42 @@ export const AdminOrders: React.FC = () => {
             </div>
 
             <div className="px-8 py-5 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-               <button 
+              <button
                 onClick={async () => {
-                  if(confirm('Permanently delete this order?')) {
+                  if (confirm('Permanently delete this order?')) {
                     await deleteOrder(selectedOrder.id);
                     setSelectedOrder(null);
                   }
                 }}
                 className="text-rose-600 font-bold text-xs hover:underline"
-               >
-                 Delete Order
-               </button>
-               <div className="flex gap-3">
-                 <select 
-                    className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs font-bold outline-none cursor-pointer focus:ring-2 focus:ring-indigo-600/10"
-                    onChange={async (e) => await updateOrderStatus(selectedOrder.id, e.target.value as OrderStatus)}
-                    value={selectedOrder.status}
-                  >
-                    {Object.values(OrderStatus).map(st => (
-                      <option key={st} value={st}>{st.replace('_', ' ')}</option>
-                    ))}
-                  </select>
-                  <button onClick={() => setSelectedOrder(null)} className="px-8 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-black transition-all shadow-md">Done</button>
-               </div>
+              >
+                Delete Order
+              </button>
+              <div className="flex gap-3">
+                <select
+                  className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs font-bold outline-none cursor-pointer focus:ring-2 focus:ring-indigo-600/10"
+                  onChange={async (e) => {
+                    const newStatus = e.target.value;
+                    try {
+                      await updateOrderStatus(selectedOrder.id, newStatus);
+                      setSelectedOrder({ ...selectedOrder, status: newStatus });
+                    } catch (err) {
+                      console.error(err);
+                    }
+                  }}
+                  value={selectedOrder.status}
+                >
+                  {Object.values(OrderStatus).map(st => (
+                    <option key={st} value={st}>{st.replace('_', ' ')}</option>
+                  ))}
+                </select>
+                <button onClick={() => setSelectedOrder(null)} className="px-8 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-black transition-all shadow-md">Done</button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Create Order Modal */}
       {isCreating && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
           <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
@@ -337,22 +366,23 @@ export const AdminOrders: React.FC = () => {
                 <X size={20} />
               </button>
             </div>
-            <form 
+            <form
               onSubmit={async (e) => {
                 e.preventDefault();
                 const formData = new FormData(e.currentTarget);
                 await createOrder({
-                  customerName: formData.get('customerName') as string,
-                  customerPhone: formData.get('customerPhone') as string,
+                  customerName: formData.get('customerName'),
+                  customerPhone: formData.get('customerPhone'),
                   orderValue: Number(formData.get('orderValue')),
                   codAmount: Number(formData.get('codAmount')),
                   pickupAddress: { street: 'Main Warehouse', city: 'NYC', state: 'NY', zip: '10001' },
-                  deliveryAddress: { 
-                    street: formData.get('deliveryStreet') as string, 
-                    city: formData.get('deliveryCity') as string, 
-                    state: 'NY', 
-                    zip: formData.get('deliveryZip') as string 
+                  deliveryAddress: {
+                    street: formData.get('deliveryStreet'),
+                    city: formData.get('deliveryCity'),
+                    state: 'NY',
+                    zip: formData.get('deliveryZip')
                   },
+                  deliveryFee: currentUser?.role === 'CLIENT' ? currentUser?.companyDetails?.feeValue : 0
                 });
                 setIsCreating(false);
               }}

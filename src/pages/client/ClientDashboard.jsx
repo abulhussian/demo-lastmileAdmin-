@@ -6,7 +6,9 @@ import { Package, Truck, Clock, DollarSign, ArrowRight } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../lib/utils';
 import { Link } from 'react-router-dom';
 
-export const ClientDashboard: React.FC = () => {
+const cn = (...inputs) => inputs.filter(Boolean).join(' ');
+
+export const ClientDashboard = () => {
   const { orders, invoices, currentUser } = useLogistics();
   
   const clientOrders = orders.filter(o => o.clientId === currentUser?.id);
@@ -96,12 +98,13 @@ export const ClientDashboard: React.FC = () => {
               >
                 Create Single Order
               </Link>
-              <button 
-                onClick={() => alert('Simulating Bulk Upload...')}
+              <Link 
+                to="/create-order" 
+                state={{ activeTab: 'BULK' }}
                 className="block w-full text-center py-2.5 bg-indigo-500/20 border border-indigo-400/30 text-white font-bold rounded-lg hover:bg-indigo-500/40 transition-colors"
               >
                 Bulk Upload (CSV)
-              </button>
+              </Link>
             </div>
           </div>
           
@@ -130,5 +133,3 @@ export const ClientDashboard: React.FC = () => {
     </MainLayout>
   );
 };
-
-const cn = (...inputs: any[]) => inputs.filter(Boolean).join(' ');
