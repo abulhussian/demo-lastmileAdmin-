@@ -37,8 +37,8 @@ const AdminUsers = () => {
       password: formData.get('password') || undefined,
       role: formData.get('role'),
       phone: selectedRole === 'CLIENT' ? formData.get('companyPhone') : formData.get('phone'),
-      vehiclePlate: formData.get('vehiclePlate'),
-      vehicleType: formData.get('vehicleType'),
+      vehicleNumber: selectedRole === 'DRIVER' ? formData.get('vehicleNumber') : undefined,
+      vehicleType: selectedRole === 'DRIVER' ? formData.get('vehicleType') : undefined,
       active: editingUser ? editingUser.active : true,
       companyDetails: selectedRole === 'CLIENT' ? {
         companyName: formData.get('companyName'),
@@ -389,10 +389,10 @@ const AdminUsers = () => {
                   <div>
                     <label className="block text-xs font-bold text-indigo-600 uppercase tracking-widest mb-1">Vehicle Plate</label>
                     <input
-                      name="vehiclePlate"
+                      name="vehicleNumber"
                       type="text"
                       placeholder="ABC-123"
-                      defaultValue={editingUser?.vehiclePlate || ''}
+                      defaultValue={editingUser?.vehicleNumber || ''}
                       required
                       className="w-full px-4 py-2 bg-white border border-indigo-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20"
                     />
@@ -408,6 +408,7 @@ const AdminUsers = () => {
                       <option value="Bike">Bike</option>
                       <option value="Van">Van</option>
                       <option value="Truck">Truck</option>
+                      <option value="none">None</option>
                     </select>
                   </div>
                 </div>

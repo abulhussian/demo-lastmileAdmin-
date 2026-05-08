@@ -378,7 +378,7 @@ export const ClientCreateOrder = () => {
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 mb-2">Bulk Order Upload</h3>
                 <p className="text-slate-500 mb-8 leading-relaxed">
-                  Download our <span className="text-indigo-600 font-bold underline cursor-pointer">template CSV</span>, fill in your daily deliveries, and drop it here to import.
+                  Download our <a href="/sample_orders.csv" download className="text-indigo-600 font-bold underline cursor-pointer">template CSV</a>, fill in your daily deliveries, and drop it here to import.
                 </p>
 
                 {!bulkFile ? (

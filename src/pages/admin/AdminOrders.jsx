@@ -24,6 +24,7 @@ export const AdminOrders = () => {
   const [showAssignForm, setShowAssignForm] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const navigate = useNavigate();
+  const [isAssigning, setIsAssigning] = useState(false);
 
   const isAdmin = currentUser?.role === 'ADMIN';
 
@@ -35,7 +36,7 @@ export const AdminOrders = () => {
       (order.trackingId || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (order.customerName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (order.clientName || '').toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'ALL' || order.status === statusFilter;
+    const matchesStatus = statusFilter === 'ALL' || order.status.toUpperCase() === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
@@ -297,18 +298,27 @@ export const AdminOrders = () => {
                           {drivers.filter(d => d.active).map(driver => (
                             <button
                               key={driver.id}
+                              disabled={isAssigning}
                               onClick={async () => {
+                                setIsAssigning(true);
                                 try {
-                                  await assignDriver(selectedOrder.id, driver.id);
+                                  // Instant UI update
                                   setSelectedOrder({ ...selectedOrder, driverId: driver.id, driverName: driver.name });
                                   setShowAssignForm(false);
+                                  
+                                  await assignDriver(selectedOrder.id, driver.id);
                                 } catch (err) {
                                   console.error(err);
+                                } finally {
+                                  setIsAssigning(false);
                                 }
                               }}
-                              className="w-full text-left px-3 py-2 hover:bg-slate-50 rounded-lg text-sm font-medium text-slate-700 transition-colors"
+                              className={cn(
+                                "w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                                isAssigning ? "opacity-50 cursor-not-allowed bg-slate-50" : "hover:bg-slate-50 text-slate-700"
+                              )}
                             >
-                              {driver.name}
+                              {isAssigning ? 'Assigning...' : driver.name}
                             </button>
                           ))}
                         </div>
@@ -338,13 +348,13 @@ export const AdminOrders = () => {
                   onChange={async (e) => {
                     const newStatus = e.target.value;
                     try {
-                      await updateOrderStatus(selectedOrder.id, newStatus);
                       setSelectedOrder({ ...selectedOrder, status: newStatus });
+                      await updateOrderStatus(selectedOrder.id, newStatus);
                     } catch (err) {
                       console.error(err);
                     }
                   }}
-                  value={selectedOrder.status}
+                  value={selectedOrder.status?.toUpperCase()}
                 >
                   {Object.values(OrderStatus).map(st => (
                     <option key={st} value={st}>{st.replace('_', ' ')}</option>

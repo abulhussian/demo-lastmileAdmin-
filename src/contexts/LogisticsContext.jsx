@@ -36,7 +36,7 @@ export const LogisticsProvider = ({ children }) => {
       clientName: o.client_name,
       driverId: o.driver_id,
       driverName: o.driver_name,
-      status: o.status,
+      status: o.status ? o.status.toUpperCase().replace(/-/g, '_') : 'PENDING',
       orderValue: Number(o.order_value) || 0,
       codAmount: Number(o.cod_amount) || 0,
       deliveryFee: Number(o.delivery_fee) || 0,
@@ -76,9 +76,11 @@ export const LogisticsProvider = ({ children }) => {
         billingEmail: u.company_details.billingEmail,
         phone: u.company_details.phone,
         address: u.company_details.address,
-        feeType: u.company_details.feeType ? u.company_details.feeType.toLowerCase() : undefined,
+        feeType: u.company_details.feeType ? u.company_details.feeType.toUpperCase() : undefined,
         feeValue: Number(u.company_details.feeValue) || 0,
-      } : undefined
+      } : undefined,
+      vehicleNumber: u.vehicle_number,
+      vehicleType: u.vehicle_type,
     };
   };
 
@@ -86,7 +88,8 @@ export const LogisticsProvider = ({ children }) => {
     ...mapUser(d),
     role: 'DRIVER',
     phone: d.phone,
-    vehicleNumber: d.vehicle_number,
+    vehicleNumber: d.vehicle_number || d.vehiclePlate,
+    vehicleType: d.vehicle_type || d.vehicleType,
     cashInHand: Number(d.cash_in_hand) || 0,
     totalDeliveries: d.total_deliveries,
   });
@@ -108,7 +111,7 @@ export const LogisticsProvider = ({ children }) => {
       tracking_id: o.trackingId,
       client_id: o.clientId,
       driver_id: o.driverId,
-      status: o.status,
+      status: o.status?.toLowerCase().replace(/_/g, '-'),
       order_value: o.orderValue,
       cod_amount: o.codAmount,
       delivery_fee: o.deliveryFee,
@@ -137,8 +140,10 @@ export const LogisticsProvider = ({ children }) => {
       role: role,
       active: !!u.active,
       phone: u.phone || "",
-      vehicle_plate: u.vehiclePlate || "",
-      vehicle_type: (u.vehicleType || "none").toLowerCase(),
+      ...(role === 'driver' && {
+        vehicle_number: u.vehicleNumber || "",
+        vehicle_type: u.vehicleType || "Van",
+      }),
       company_details: (role === 'client' || u.companyDetails) ? {
         companyName: u.companyDetails?.companyName || "",
         billingEmail: u.companyDetails?.billingEmail || u.email,
@@ -258,13 +263,35 @@ export const LogisticsProvider = ({ children }) => {
   };
 
   const updateOrderStatus = async (orderId, status) => {
-    await api.patch(`/orders/${orderId}/status`, { status });
-    await fetchData();
+    // Optimistic Update
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
+    
+    try {
+      const apiStatus = status.toLowerCase().replace(/_/g, '-');
+      await api.patch(`/orders/${orderId}/status`, { status: apiStatus });
+      // Optional: silent refresh in background
+      fetchData(); 
+    } catch (err) {
+      await fetchData(); // Rollback/Sync on error
+      throw err;
+    }
   };
 
   const assignDriver = async (orderId, driverId) => {
-    await api.patch(`/orders/${orderId}/assign`, { driver_id: driverId });
-    await fetchData();
+    const driver = drivers.find(d => d.id === driverId);
+    
+    // Optimistic Update
+    setOrders(prev => prev.map(o => 
+      o.id === orderId ? { ...o, driverId, driverName: driver?.name || 'Assigned' } : o
+    ));
+
+    try {
+      await api.patch(`/orders/${orderId}/assign`, { driver_id: driverId });
+      fetchData(); // background refresh
+    } catch (err) {
+      await fetchData(); // Rollback/Sync on error
+      throw err;
+    }
   };
 
   const createOrder = async (newOrder) => {
@@ -280,7 +307,14 @@ export const LogisticsProvider = ({ children }) => {
   };
 
   const deleteOrder = async (orderId) => {
-    console.warn('Delete order API not implemented in backend yet');
+    try {
+      await api.delete(`/orders/${orderId}`);
+      await fetchData();
+      showToast('Order deleted successfully', 'success');
+    } catch (err) {
+      console.error('Failed to delete order:', err);
+      showToast(err.message || 'Failed to delete order', 'error');
+    }
   };
 
   const settleDriverCash = async (driverId, amount) => {
@@ -314,7 +348,14 @@ export const LogisticsProvider = ({ children }) => {
   };
 
   const markInvoicePaid = async (invoiceId) => {
-    console.warn('Mark invoice paid API not implemented in backend yet');
+    try {
+      await api.patch(`/billing/${invoiceId}/paid`, {});
+      await fetchData();
+      showToast('Invoice marked as paid', 'success');
+    } catch (err) {
+      console.error('Failed to mark invoice as paid:', err);
+      showToast(err.message || 'Failed to mark invoice as paid', 'error');
+    }
   };
 
   const forgotPassword = async (email) => {

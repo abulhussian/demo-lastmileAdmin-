@@ -1,4 +1,6 @@
-const BASE_URL = 'http://192.168.1.8:5000/api';
+// const BASE_URL = 'http://192.168.1.8:5000/api';
+const BASE_URL = 'https://last-mile-backend-m63f.onrender.com/api';
+
 
 async function request(endpoint, options = {}) {
   const userStr = localStorage.getItem('logiflow_user');

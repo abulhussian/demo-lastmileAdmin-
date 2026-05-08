@@ -8,7 +8,7 @@ import { FileText, Download, Filter, MoreVertical, CreditCard, Clock } from 'luc
 export const AdminBilling = () => {
   const { invoices, generateInvoices, markInvoicePaid, currentUser, fetchData } = useLogistics();
   const [isGenerating, setIsGenerating] = useState(false);
-  
+
   // Manual Batch States
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [clients, setClients] = useState([]);
@@ -28,13 +28,22 @@ export const AdminBilling = () => {
   const [fetchingClients, setFetchingClients] = useState(false);
   const [fetchingOrders, setFetchingOrders] = useState(false);
   const [creatingManual, setCreatingManual] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const isAdmin = currentUser?.role === 'ADMIN';
 
   // If client, filter invoices
-  const displayInvoices = isAdmin 
-    ? invoices 
-    : invoices.filter(inv => inv.clientId === currentUser?.id);
+  const displayInvoices = (isAdmin
+    ? invoices
+    : invoices.filter(inv => inv.clientId === currentUser?.id)
+  ).filter(inv => {
+    const matchesStatus = statusFilter === 'ALL' || inv.status.toUpperCase() === statusFilter;
+    const matchesSearch = inv.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         inv.id.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesStatus && matchesSearch;
+  });
 
   const totalOutstanding = displayInvoices.reduce((sum, inv) => sum + inv.outstandingBalance, 0);
 
@@ -59,7 +68,7 @@ export const AdminBilling = () => {
       setSelectedOrderIds([]);
       return;
     }
-    
+
     setFetchingOrders(true);
     try {
       const { api } = await import('../../lib/api');
@@ -75,8 +84,8 @@ export const AdminBilling = () => {
   };
 
   const handleToggleOrder = (orderId) => {
-    setSelectedOrderIds(prev => 
-      prev.includes(orderId) 
+    setSelectedOrderIds(prev =>
+      prev.includes(orderId)
         ? prev.filter(id => id !== orderId)
         : [...prev, orderId]
     );
@@ -84,7 +93,7 @@ export const AdminBilling = () => {
 
   const handleCreateManual = async () => {
     if (!selectedClient || selectedOrderIds.length === 0) return;
-    
+
     setCreatingManual(true);
     try {
       const { api } = await import('../../lib/api');
@@ -94,7 +103,7 @@ export const AdminBilling = () => {
         due_date: new Date(dueDate).toISOString(),
         extra_charges: Number(extraCharges)
       };
-      
+
       await api.post('/billing/create-manual', payload);
       await fetchData(); // Refresh table
       setIsModalOpen(false);
@@ -115,7 +124,7 @@ export const AdminBilling = () => {
   };
 
   const handleDownload = (invoice) => {
-    const csvContent = "data:text/csv;charset=utf-8," 
+    const csvContent = "data:text/csv;charset=utf-8,"
       + "Invoice ID,Client,Amount,Status,Due Date\n"
       + `${invoice.id},${invoice.clientName},${invoice.amount},${invoice.status},${invoice.dueDate}`;
     const encodedUri = encodeURI(csvContent);
@@ -140,7 +149,7 @@ export const AdminBilling = () => {
               <span>Pending Settlement</span>
             </div>
           </div>
-          
+
           {isAdmin && (
             <>
               <div className="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group">
@@ -169,9 +178,19 @@ export const AdminBilling = () => {
               <p className="text-slate-400 text-xs font-medium">Auto-generated batches for delivered orders</p>
             </div>
             <div className="flex items-center gap-3">
-              <button className="p-2.5 border border-slate-200 rounded-xl text-slate-400 hover:bg-slate-50 transition-colors"><Filter size={18} /></button>
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className={cn(
+                  "p-2.5 border rounded-xl transition-all",
+                  showFilters
+                    ? "bg-indigo-50 border-indigo-200 text-indigo-600 shadow-inner"
+                    : "border-slate-200 text-slate-400 hover:bg-slate-50"
+                )}
+              >
+                <Filter size={18} />
+              </button>
               {isAdmin && (
-                <button 
+                <button
                   onClick={handleGenerate}
                   disabled={isGenerating}
                   className="bg-indigo-600 text-white px-6 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 active:scale-95 disabled:opacity-50"
@@ -182,6 +201,53 @@ export const AdminBilling = () => {
               )}
             </div>
           </div>
+
+          {/* Filter Bar */}
+          {showFilters && (
+            <div className="px-8 py-4 bg-slate-50/50 border-b border-slate-100 flex flex-wrap items-center gap-4 animate-in slide-in-from-top-2 duration-200">
+              <div className="flex-1 min-w-[240px] relative">
+                <input
+                  type="text"
+                  placeholder="Search by client name or invoice ID..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-xs font-medium focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all outline-none"
+                />
+                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+                  <FileText size={14} />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status:</span>
+                <div className="flex bg-white p-1 rounded-lg border border-slate-200">
+                  {['ALL', 'UNPAID', 'PAID', 'OVERDUE'].map((status) => (
+                    <button
+                      key={status}
+                      onClick={() => setStatusFilter(status)}
+                      className={cn(
+                        "px-3 py-1 rounded-md text-[10px] font-bold transition-all",
+                        statusFilter === status
+                          ? "bg-slate-900 text-white shadow-sm"
+                          : "text-slate-500 hover:bg-slate-50"
+                      )}
+                    >
+                      {status}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {(statusFilter !== 'ALL' || searchQuery) && (
+                <button
+                  onClick={() => { setStatusFilter('ALL'); setSearchQuery(''); }}
+                  className="text-[10px] font-bold text-indigo-600 hover:text-indigo-700 underline"
+                >
+                  Clear Filters
+                </button>
+              )}
+            </div>
+          )}
           <div className="overflow-x-auto min-h-[300px]">
             <table className="w-full text-left">
               <thead className="bg-[#F8FAFC] text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-200">
@@ -209,11 +275,11 @@ export const AdminBilling = () => {
                     <td className="px-8 py-5"><StatusBadge status={inv.status} /></td>
                     <td className="px-8 py-5 text-xs font-bold text-slate-500">{formatDate(inv.dueDate)}</td>
                     <td className="px-8 py-5 text-right">
-                      <div className="flex items-center justify-end gap-3 translate-x-2 opacity-0 group-hover:opacity-100 group-hover:translate-x-0 transition-all">
-                        {isAdmin && inv.status !== 'PAID' && (
-                          <button 
+                      <div className="flex items-center justify-end gap-3">
+                        {isAdmin && inv.status.toUpperCase() !== 'PAID' && (
+                          <button
                             onClick={async () => {
-                              if(confirm('Confirm payment for this batch?')) {
+                              if (confirm('Confirm payment for this batch?')) {
                                 await markInvoicePaid(inv.id);
                               }
                             }}
@@ -223,7 +289,7 @@ export const AdminBilling = () => {
                             <CreditCard size={18} />
                           </button>
                         )}
-                        <button 
+                        <button
                           onClick={() => handleDownload(inv)}
                           className="p-2 text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors border border-transparent hover:border-indigo-100"
                           title="Download CSV"
@@ -240,7 +306,7 @@ export const AdminBilling = () => {
               </tbody>
             </table>
             {displayInvoices.length === 0 && (
-               <div className="p-20 text-center">
+              <div className="p-20 text-center">
                 <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-slate-50 text-slate-200 mb-4">
                   <FileText size={40} />
                 </div>
@@ -261,7 +327,7 @@ export const AdminBilling = () => {
                 <h2 className="text-xl font-bold text-slate-900">Generate Manual Invoice</h2>
                 <p className="text-xs text-slate-400 font-medium">Create a custom billing batch for a specific client</p>
               </div>
-              <button 
+              <button
                 onClick={() => { setIsModalOpen(false); resetModal(); }}
                 className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-50 text-slate-400 transition-colors"
               >
@@ -277,7 +343,7 @@ export const AdminBilling = () => {
                   {fetchingClients ? (
                     <div className="h-14 bg-slate-50 animate-pulse rounded-2xl border border-slate-100" />
                   ) : (
-                    <select 
+                    <select
                       value={selectedClient}
                       onChange={(e) => handleClientChange(e.target.value)}
                       className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all appearance-none"
@@ -297,7 +363,7 @@ export const AdminBilling = () => {
                       <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">2. Select Orders to Invoice</label>
                       <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">{selectedOrderIds.length} Selected</span>
                     </div>
-                    
+
                     {fetchingOrders ? (
                       <div className="space-y-2">
                         {[1, 2, 3].map(i => <div key={i} className="h-12 bg-slate-50 animate-pulse rounded-xl border border-slate-100" />)}
@@ -309,13 +375,13 @@ export const AdminBilling = () => {
                     ) : (
                       <div className="space-y-2 max-h-[240px] overflow-y-auto pr-2 custom-scrollbar">
                         {uninvoicedOrders.map(order => (
-                          <div 
+                          <div
                             key={order.id}
                             onClick={() => handleToggleOrder(order.id)}
                             className={cn(
                               "flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer group",
-                              selectedOrderIds.includes(order.id) 
-                                ? "bg-indigo-50 border-indigo-100 shadow-sm" 
+                              selectedOrderIds.includes(order.id)
+                                ? "bg-indigo-50 border-indigo-100 shadow-sm"
                                 : "bg-white border-slate-100 hover:border-slate-300"
                             )}
                           >
@@ -344,8 +410,8 @@ export const AdminBilling = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-100 animate-in fade-in slide-in-from-top-4 duration-300">
                     <div className="space-y-2">
                       <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Billing Period</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={billingPeriod}
                         onChange={(e) => setBillingPeriod(e.target.value)}
                         className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 py-3.5 text-sm font-bold text-slate-900 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all"
@@ -353,8 +419,8 @@ export const AdminBilling = () => {
                     </div>
                     <div className="space-y-2">
                       <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Due Date</label>
-                      <input 
-                        type="date" 
+                      <input
+                        type="date"
                         value={dueDate}
                         onChange={(e) => setDueDate(e.target.value)}
                         className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 py-3.5 text-sm font-bold text-slate-900 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all"
@@ -364,8 +430,8 @@ export const AdminBilling = () => {
                       <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Extra Service Charges (Optional)</label>
                       <div className="relative">
                         <span className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
-                        <input 
-                          type="number" 
+                        <input
+                          type="number"
                           value={extraCharges}
                           onChange={(e) => setExtraCharges(e.target.value)}
                           className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-6 py-3.5 text-sm font-bold text-slate-900 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all"
@@ -378,13 +444,13 @@ export const AdminBilling = () => {
             </div>
 
             <div className="p-8 bg-slate-50/50 border-t border-slate-100 flex items-center justify-end gap-3">
-              <button 
+              <button
                 onClick={() => { setIsModalOpen(false); resetModal(); }}
                 className="px-8 py-3.5 text-xs font-bold text-slate-500 hover:text-slate-900 transition-colors"
               >
                 Cancel
               </button>
-              <button 
+              <button
                 onClick={handleCreateManual}
                 disabled={creatingManual || selectedOrderIds.length === 0}
                 className="bg-slate-900 text-white px-10 py-3.5 rounded-2xl text-xs font-bold hover:bg-indigo-600 transition-all shadow-xl shadow-slate-200 active:scale-95 disabled:opacity-30 disabled:grayscale"
