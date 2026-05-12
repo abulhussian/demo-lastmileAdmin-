@@ -36,7 +36,7 @@ const AdminUsers = () => {
       email: formData.get('email'),
       password: formData.get('password') || undefined,
       role: formData.get('role'),
-      phone: selectedRole === 'CLIENT' ? formData.get('companyPhone') : formData.get('phone'),
+      phone: formData.get('phone'),
       vehicleNumber: selectedRole === 'DRIVER' ? formData.get('vehicleNumber') : undefined,
       vehicleType: selectedRole === 'DRIVER' ? formData.get('vehicleType') : undefined,
       active: editingUser ? editingUser.active : true,
@@ -155,7 +155,7 @@ const AdminUsers = () => {
                       </div>
                       <div>
                         <div className="font-medium text-slate-900">{user.name}</div>
-                        <div className="text-sm text-slate-500">{user.email}</div>
+                        <div className="text-sm text-slate-500">{user.email} {user.phone && `• ${user.phone}`}</div>
                       </div>
                     </div>
                   </td>
@@ -246,6 +246,15 @@ const AdminUsers = () => {
                   className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Phone Number</label>
+                <input
+                  name="phone"
+                  defaultValue={editingUser?.phone || ''}
+                  required
+                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                />
+              </div>
               {!editingUser && (
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
@@ -309,7 +318,7 @@ const AdminUsers = () => {
                       <label className="block text-xs font-semibold text-slate-600 mb-1">Business Phone</label>
                       <input 
                         name="companyPhone" 
-                        defaultValue={editingUser?.companyDetails?.phone || ''} 
+                        defaultValue={editingUser?.companyDetails?.phone || editingUser?.phone || ''} 
                         required 
                         className="w-full px-3 py-2 bg-white border border-indigo-100 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/10 text-sm" 
                       />
@@ -376,17 +385,6 @@ const AdminUsers = () => {
               {selectedRole === 'DRIVER' && (
                 <div className="grid grid-cols-2 gap-4 p-4 bg-indigo-50/50 rounded-xl border border-indigo-100">
                   <div className="col-span-2">
-                    <label className="block text-xs font-bold text-indigo-600 uppercase tracking-widest mb-1">Driver Phone</label>
-                    <input
-                      name="phone"
-                      type="text"
-                      placeholder="+91..."
-                      defaultValue={editingUser?.phone || ''}
-                      required
-                      className="w-full px-4 py-2 bg-white border border-indigo-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20"
-                    />
-                  </div>
-                  <div>
                     <label className="block text-xs font-bold text-indigo-600 uppercase tracking-widest mb-1">Vehicle Plate</label>
                     <input
                       name="vehicleNumber"

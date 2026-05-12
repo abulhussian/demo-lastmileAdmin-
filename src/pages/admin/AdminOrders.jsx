@@ -41,13 +41,46 @@ export const AdminOrders = () => {
   });
 
   const handleExport = () => {
-    const data = JSON.stringify(filteredOrders, null, 2);
-    const blob = new Blob([data], { type: 'application/json' });
+    const headers = [
+      'Tracking ID',
+      'Client',
+      'Customer',
+      'Phone',
+      'Status',
+      'Order Value',
+      'COD Amount',
+      'Delivery Fee',
+      'Driver',
+      'Created At',
+      'Delivery Address'
+    ];
+
+    const csvRows = [
+      headers.join(','),
+      ...filteredOrders.map(order => [
+        `"${order.trackingId || ''}"`,
+        `"${order.clientName || ''}"`,
+        `"${order.customerName || ''}"`,
+        `"${order.customerPhone || ''}"`,
+        `"${order.status || ''}"`,
+        order.orderValue || 0,
+        order.codAmount || 0,
+        order.deliveryFee || 0,
+        `"${order.driverName || 'Unassigned'}"`,
+        `"${order.createdAt ? new Date(order.createdAt).toLocaleString() : ''}"`,
+        `"${order.deliveryAddress?.street || ''} ${order.deliveryAddress?.city || ''}"`.trim()
+      ].join(','))
+    ];
+
+    const csvString = csvRows.join('\n');
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `orders-export-${new Date().toISOString().split('T')[0]}.json`;
+    link.setAttribute('download', `orders-export-${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
   };
 
   return (

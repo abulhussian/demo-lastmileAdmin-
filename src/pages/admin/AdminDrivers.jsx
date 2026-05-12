@@ -32,10 +32,12 @@ export const AdminDrivers = () => {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const filteredDrivers = drivers.filter(driver =>
-    driver.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    driver.vehicleNumber.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredDrivers = drivers.filter(driver => {
+    const name = driver.name || '';
+    const vehicleNumber = driver.vehicleNumber || '';
+    return name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           vehicleNumber.toLowerCase().includes(searchTerm.toLowerCase());
+  });
 
   const handleAddDriver = async (e) => {
     e.preventDefault();
@@ -47,7 +49,7 @@ export const AdminDrivers = () => {
         email: formData.get('email'),
         password: formData.get('password') || 'password123',
         phone: formData.get('phone'),
-        vehiclePlate: formData.get('vehiclePlate'),
+        vehicleNumber: formData.get('vehicleNumber'),
         vehicleType: formData.get('vehicleType'),
         role: 'DRIVER',
         active: true,
@@ -285,7 +287,7 @@ export const AdminDrivers = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5">Vehicle Plate</label>
-                  <input name="vehiclePlate" required placeholder="ABC-123" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm font-medium" />
+                  <input name="vehicleNumber" required placeholder="ABC-123" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm font-medium" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5">Vehicle Type</label>

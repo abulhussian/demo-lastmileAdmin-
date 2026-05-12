@@ -9,45 +9,72 @@ const ClientProfile = () => {
   const [activeTab, setActiveTab] = useState('PERSONAL');
   const [isSaving, setIsSaving] = useState(false);
 
-  // Form states for business info
-  const [billingEmail, setBillingEmail] = useState(currentUser?.companyDetails?.billingEmail || '');
-  const [addressText, setAddressText] = useState(
-    currentUser?.companyDetails?.address
-      ? `${currentUser.companyDetails.address.street}\n${currentUser.companyDetails.address.city}, ${currentUser.companyDetails.address.state} ${currentUser.companyDetails.address.zip}`
-      : ''
+  // Form states
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [billingEmail, setBillingEmail] = useState('');
+  const [street, setStreet] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [zip, setZip] = useState('');
+
+  // Sync form state when currentUser changes
+  React.useEffect(() => {
+    if (currentUser) {
+      setName(currentUser.name || '');
+      setPhone(currentUser.phone || '');
+      setCompanyName(currentUser.companyDetails?.companyName || '');
+      setBillingEmail(currentUser.companyDetails?.billingEmail || '');
+      setStreet(currentUser.companyDetails?.address?.street || '');
+      setCity(currentUser.companyDetails?.address?.city || '');
+      setState(currentUser.companyDetails?.address?.state || '');
+      setZip(currentUser.companyDetails?.address?.zip || '');
+    }
+  }, [currentUser]);
+
+  const hasChanges = currentUser && (
+    name !== (currentUser.name || '') ||
+    phone !== (currentUser.phone || '') ||
+    companyName !== (currentUser.companyDetails?.companyName || '') ||
+    billingEmail !== (currentUser.companyDetails?.billingEmail || '') ||
+    street !== (currentUser.companyDetails?.address?.street || '') ||
+    city !== (currentUser.companyDetails?.address?.city || '') ||
+    state !== (currentUser.companyDetails?.address?.state || '') ||
+    zip !== (currentUser.companyDetails?.address?.zip || '')
   );
 
   if (!currentUser) return null;
 
-  const handleSaveBusinessInfo = async () => {
+  const handleSaveProfile = async () => {
+    if (!hasChanges) {
+      showToast('No changes detected', 'info');
+      return;
+    }
     setIsSaving(true);
     try {
-      // Parse address text back to object (very basic parsing)
-      const lines = addressText.split('\n');
-      const street = lines[0] || '';
-      const secondLine = lines[1] || '';
-      const [cityState, zip] = secondLine.split(' ');
-      const [city, state] = cityState ? cityState.split(',') : ['', ''];
-
-      const updatedCompanyDetails = {
-        ...currentUser.companyDetails,
-        billingEmail: billingEmail,
-        address: {
-          street: street.trim(),
-          city: (city || '').trim(),
-          state: (state || '').trim(),
-          zip: (zip || '').trim(),
+      const payload = {
+        ...currentUser,
+        name,
+        phone,
+        companyDetails: {
+          ...currentUser.companyDetails,
+          companyName,
+          billingEmail,
+          address: {
+            street,
+            city,
+            state,
+            zip
+          },
+          phone: phone // Syncing main phone to company phone
         }
       };
 
-      await updateUser(currentUser.id, {
-        ...currentUser,
-        companyDetails: updatedCompanyDetails
-      });
-      
-      showToast('Business information updated successfully!');
+      await updateUser(currentUser.id, payload);
+      showToast('Profile updated successfully!');
     } catch (error) {
-      console.error('Failed to update business info:', error);
+      console.error('Failed to update profile:', error);
       showToast(error.message || 'Error updating profile', 'error');
     } finally {
       setIsSaving(false);
@@ -101,9 +128,16 @@ const ClientProfile = () => {
                       currentUser.name.charAt(0).toUpperCase()
                     )}
                   </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-slate-900">{currentUser.name}</h3>
-                    <div className="flex items-center gap-4 mt-1.5">
+                  <div className="flex-1">
+                    <label className="block mb-2">
+                      <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Full Name</span>
+                      <input
+                        value={name}
+                        onChange={e => setName(e.target.value)}
+                        className="w-full mt-1 bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-slate-900 font-bold focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all"
+                      />
+                    </label>
+                    <div className="flex items-center gap-4 mt-2">
                       <p className="text-slate-500 flex items-center gap-1.5 text-sm">
                         <Shield className="w-4 h-4 text-slate-400" />
                         Role: <span className="font-bold text-slate-700 capitalize">{currentUser.role?.toLowerCase()}</span>
@@ -127,7 +161,7 @@ const ClientProfile = () => {
                       <input
                         readOnly
                         value={currentUser.email}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-600 focus:outline-none"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-400 font-medium cursor-not-allowed"
                       />
                     </label>
                     <label className="block">
@@ -135,9 +169,10 @@ const ClientProfile = () => {
                         <Phone className="w-4 h-4 text-slate-400" /> Phone Number
                       </span>
                       <input
-                        readOnly
-                        value={currentUser.phone || currentUser.companyDetails?.phone || 'Not provided'}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-600 focus:outline-none"
+                        value={phone}
+                        onChange={e => setPhone(e.target.value)}
+                        placeholder="+91 00000 00000"
+                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-900 font-medium focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all"
                       />
                     </label>
                   </div>
@@ -160,29 +195,53 @@ const ClientProfile = () => {
                   <div className="space-y-6">
                     <div>
                       <h4 className="text-sm font-bold text-slate-900 uppercase tracking-widest mb-6">Company Registry</h4>
-                      <div className="space-y-6">
+                      <div className="space-y-5">
                         <label className="block">
                           <span className="text-sm font-semibold text-slate-700 flex items-center gap-2 mb-2">
                             <Building className="w-4 h-4 text-slate-400" /> Company Name
                           </span>
                           <input
-                            readOnly
-                            defaultValue={currentUser.companyDetails?.companyName}
-                            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-700 focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all"
+                            value={companyName}
+                            onChange={e => setCompanyName(e.target.value)}
+                            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-900 font-medium focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all"
                           />
                         </label>
-                        <label className="block">
-                          <span className="text-sm font-semibold text-slate-700 flex items-center gap-2 mb-2">
+                        
+                        <div className="space-y-4 pt-2">
+                          <span className="text-sm font-semibold text-slate-700 flex items-center gap-2">
                             <MapPin className="w-4 h-4 text-slate-400" /> Business Address
                           </span>
-                          <textarea
-                            rows={3}
-                            value={addressText}
-                            onChange={(e) => setAddressText(e.target.value)}
-                            placeholder="Street, City, State, ZIP"
-                            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-700 focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all resize-none"
-                          />
-                        </label>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="col-span-2">
+                              <input
+                                placeholder="Street Address"
+                                value={street}
+                                onChange={e => setStreet(e.target.value)}
+                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all"
+                              />
+                            </div>
+                            <input
+                              placeholder="City"
+                              value={city}
+                              onChange={e => setCity(e.target.value)}
+                              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all"
+                            />
+                            <input
+                              placeholder="State"
+                              value={state}
+                              onChange={e => setState(e.target.value)}
+                              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all"
+                            />
+                            <div className="col-span-2">
+                              <input
+                                placeholder="Zip Code"
+                                value={zip}
+                                onChange={e => setZip(e.target.value)}
+                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all"
+                              />
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -206,8 +265,8 @@ const ClientProfile = () => {
                           </span>
                         </div>
 
-                        <div className="space-y-3">
-                          <p className="text-xs text-slate-400 leading-relaxed">
+                        <div className="space-y-4">
+                          <p className="text-xs text-slate-400 leading-relaxed border-b border-slate-200 pb-4">
                             Your billing structure is managed by the LastMile admin. Contact support to request a rate change.
                           </p>
                           <div>
@@ -234,15 +293,23 @@ const ClientProfile = () => {
             ) : null}
 
             <div className="mt-12 pt-8 border-t border-slate-100 flex justify-end gap-3">
-              <button className="px-6 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 rounded-xl transition-all">
-                Cancel
+              <button 
+                onClick={() => window.location.reload()} 
+                className="px-6 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 rounded-xl transition-all"
+              >
+                Discard Changes
               </button>
               <button
-                onClick={handleSaveBusinessInfo}
-                disabled={isSaving}
-                className="px-8 py-2.5 text-sm font-semibold text-white bg-slate-900 rounded-xl hover:bg-slate-800 transition-all shadow-md shadow-slate-200 disabled:opacity-50"
+                onClick={handleSaveProfile}
+                disabled={isSaving || !hasChanges}
+                className="px-8 py-2.5 text-sm font-semibold text-white bg-slate-900 rounded-xl hover:bg-black transition-all shadow-lg shadow-slate-200 disabled:opacity-50 disabled:cursor-not-allowed min-w-[140px]"
               >
-                {isSaving ? 'Saving...' : 'Save Changes'}
+                {isSaving ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Saving...
+                  </div>
+                ) : 'Save Changes'}
               </button>
             </div>
           </div>

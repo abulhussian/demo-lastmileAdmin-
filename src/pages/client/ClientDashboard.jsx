@@ -114,11 +114,20 @@ export const ClientDashboard = () => {
             <div className="space-y-4">
               <div className="flex justify-between items-center text-sm">
                 <span className="text-slate-500">Unpaid Invoices</span>
-                <span className="font-bold text-slate-900">1</span>
+                <span className="font-bold text-slate-900">
+                  {clientInvoices.filter(i => i.status?.toLowerCase() !== 'paid').length}
+                </span>
               </div>
               <div className="flex justify-between items-center text-sm">
                 <span className="text-slate-500">Next Due Date</span>
-                <span className="font-bold text-rose-600">May 15, 2026</span>
+                <span className={cn(
+                  "font-bold",
+                  clientInvoices.some(i => i.status?.toLowerCase() !== 'paid') ? "text-rose-600" : "text-slate-400"
+                )}>
+                  {clientInvoices.find(i => i.status?.toLowerCase() !== 'paid')?.dueDate 
+                    ? formatDate(clientInvoices.find(i => i.status?.toLowerCase() !== 'paid').dueDate) 
+                    : 'No due invoices'}
+                </span>
               </div>
               <Link 
                 to="/client/billing" 

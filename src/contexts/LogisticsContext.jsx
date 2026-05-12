@@ -69,6 +69,7 @@ export const LogisticsProvider = ({ children }) => {
       email: u.email,
       role: roleNormalization[u.role] || u.role,
       avatar: u.avatar,
+      phone: u.phone || u.mobile_number || u.contact_number || u.phone_number || u.company_details?.phone,
       active: !!u.active,
       rating: u.rating,
       companyDetails: u.company_details ? {
@@ -185,6 +186,17 @@ export const LogisticsProvider = ({ children }) => {
     driverId: s.driver_id // Adding this if it exists in the real response, otherwise we use driverName
   });
 
+  const [revenueStats, setRevenueStats] = useState(null);
+
+  const fetchRevenueStats = useCallback(async () => {
+    try {
+      const response = await api.get('/billing/revenue-chart');
+      setRevenueStats(response.data || response);
+    } catch (err) {
+      console.error('Failed to fetch revenue stats:', err);
+    }
+  }, []);
+
   const fetchData = useCallback(async () => {
     if (!currentUser) return;
     const isAdmin = currentUser.role === 'ADMIN';
@@ -194,6 +206,7 @@ export const LogisticsProvider = ({ children }) => {
       setOrders((ordersResponse.data || []).map(mapOrder));
 
       if (isAdmin) {
+        fetchRevenueStats(); // Initial fetch for admin
         try {
           const usersResponse = await api.get('/users');
           setUsers((usersResponse.data || [])
@@ -215,13 +228,13 @@ export const LogisticsProvider = ({ children }) => {
       }
 
       if (currentUser.role === 'CLIENT') {
-        const billingResponse = await api.get('/billing/client/' + currentUser.id);
+        const billingResponse = await api.get('/billing/my-invoices');
         setInvoices((billingResponse.data || []).map(mapInvoice));
       }
     } catch (err) {
       console.error('Failed to fetch data:', err);
     }
-  }, [currentUser?.id, currentUser?.role]);
+  }, [currentUser?.id, currentUser?.role, fetchRevenueStats]);
 
   useEffect(() => {
     const refreshUser = async () => {
@@ -252,9 +265,21 @@ export const LogisticsProvider = ({ children }) => {
   const login = async (email, password) => {
     const response = await api.post('/auth/login', { email, password });
     const { token, user } = response;
-    const userWithToken = { ...mapUser(user), token };
-    setCurrentUser(userWithToken);
-    localStorage.setItem('logiflow_user', JSON.stringify(userWithToken));
+    
+    // Set token in localStorage first so subsequent calls have it
+    localStorage.setItem('logiflow_user', JSON.stringify({ token, ...mapUser(user) }));
+    
+    // Immediately fetch full profile details
+    try {
+      const profileResponse = await api.get('/auth/me');
+      const fullUser = { ...mapUser(profileResponse.data || profileResponse), token };
+      setCurrentUser(fullUser);
+      localStorage.setItem('logiflow_user', JSON.stringify(fullUser));
+    } catch (err) {
+      // Fallback to login response if /me fails
+      const userWithToken = { ...mapUser(user), token };
+      setCurrentUser(userWithToken);
+    }
   };
 
   const logout = () => {
@@ -374,6 +399,7 @@ export const LogisticsProvider = ({ children }) => {
   return (
     <LogisticsContext.Provider value={{
       currentUser, users, drivers, orders, invoices, settlements, toast,
+      revenueStats, fetchRevenueStats,
       login, logout, updateOrderStatus, assignDriver, createOrder, deleteOrder,
       settleDriverCash, toggleUserStatus, addUser, updateUser, deleteUser,
       generateInvoices, markInvoicePaid, fetchData,

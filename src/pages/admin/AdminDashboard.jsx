@@ -35,15 +35,24 @@ const chartData = [
 
 export const AdminDashboard = () => {
   const navigate = useNavigate();
-  const { orders, drivers } = useLogistics();
+  const { orders, drivers, revenueStats, fetchRevenueStats } = useLogistics();
+  const [period, setPeriod] = React.useState('weekly');
 
-  const totalOrders = orders.length;
+  const stats = revenueStats?.revenue_stats;
+  const totalOrders = stats?.total_orders || orders.length;
   const activeDrivers = drivers.filter(d => d.active).length;
-  const totalRevenue = orders.reduce((sum, o) => sum + (Number(o.orderValue) || 0), 0);
-  const driverCash = drivers.reduce((sum, d) => sum + (Number(d.cashInHand) || 0), 0);
+  const totalRevenue = stats?.total_revenue || orders.reduce((sum, o) => sum + (Number(o.orderValue) || 0), 0);
+  const driverCash = stats?.total_outstanding || drivers.reduce((sum, d) => sum + (Number(d.cashInHand) || 0), 0);
 
   const pendingOrders = orders.filter(o => o.status === 'PENDING').length;
   const deliveredToday = orders.filter(o => o.status === 'DELIVERED').length;
+
+  const handlePeriodChange = (newPeriod) => {
+    setPeriod(newPeriod);
+    // No need to fetch again if we already have both
+  };
+
+  const currentChartData = revenueStats?.charts?.[period] || chartData;
 
   return (
     <MainLayout title="Admin Overview">
@@ -80,14 +89,30 @@ export const AdminDashboard = () => {
         <div className="lg:col-span-8 bg-white p-6 rounded-[16px] border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between mb-8">
             <h3 className="font-bold text-slate-900">Revenue Performance</h3>
-            <div className="flex gap-2">
-              <button className="text-[10px] font-bold uppercase bg-slate-950 text-white px-3 py-1 rounded-full">Weekly</button>
-              <button className="text-[10px] font-bold uppercase text-slate-400 px-3 py-1">Monthly</button>
+            <div className="flex gap-2 bg-slate-100 p-1 rounded-full">
+              <button 
+                onClick={() => handlePeriodChange('weekly')}
+                className={cn(
+                  "text-[10px] font-bold uppercase px-4 py-1.5 rounded-full transition-all",
+                  period === 'weekly' ? "bg-slate-950 text-white shadow-md" : "text-slate-500 hover:text-slate-900"
+                )}
+              >
+                Weekly
+              </button>
+              <button 
+                onClick={() => handlePeriodChange('monthly')}
+                className={cn(
+                  "text-[10px] font-bold uppercase px-4 py-1.5 rounded-full transition-all",
+                  period === 'monthly' ? "bg-slate-950 text-white shadow-md" : "text-slate-500 hover:text-slate-900"
+                )}
+              >
+                Monthly
+              </button>
             </div>
           </div>
           <div className="h-[280px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData}>
+              <AreaChart data={currentChartData}>
                 <defs>
                   <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.2}/>
@@ -95,7 +120,7 @@ export const AdminDashboard = () => {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
-                <XAxis dataKey="name" fontSize={11} stroke="#94A3B8" axisLine={false} tickLine={false} />
+                <XAxis dataKey={revenueStats?.charts ? "label" : "name"} fontSize={11} stroke="#94A3B8" axisLine={false} tickLine={false} />
                 <YAxis fontSize={11} stroke="#94A3B8" axisLine={false} tickLine={false} />
                 <Tooltip 
                   contentStyle={{ borderRadius: '12px', border: '1px solid #E2E8F0', padding: '12px' }}

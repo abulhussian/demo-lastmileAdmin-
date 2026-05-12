@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../lib/utils';
 
 export const ClientCreateOrder = () => {
-  const { createOrder, bulkCreateOrders, currentUser } = useLogistics();
+  const { createOrder, bulkCreateOrders, currentUser, showToast } = useLogistics();
   const navigate = useNavigate();
   const location = useLocation();
   const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'SINGLE');
@@ -50,37 +50,53 @@ export const ClientCreateOrder = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!formData.pickupStreet || !formData.pickupCity) {
+      showToast('Please provide a complete Pickup Location', 'error');
+      return;
+    }
+
+    if (!formData.deliveryStreet || !formData.deliveryCity) {
+      showToast('Please provide a complete Delivery Location', 'error');
+      return;
+    }
+
     setIsSubmitting(true);
     
-    await createOrder({
-      customerName: formData.customerName,
-      customerPhone: formData.customerPhone,
-      orderValue: Number(formData.orderValue),
-      codAmount: Number(formData.codAmount),
-      pickupAddress: { 
-        street: formData.pickupStreet, 
-        city: formData.pickupCity, 
-        state: 'NY', 
-        zip: formData.pickupZip,
-        lat: formData.pickupLat,
-        lng: formData.pickupLng
-      },
-      deliveryAddress: { 
-        street: formData.deliveryStreet, 
-        city: formData.deliveryCity, 
-        state: 'NY', 
-        zip: formData.deliveryZip,
-        lat: formData.deliveryLat,
-        lng: formData.deliveryLng
-      },
-      clientId: currentUser?.id,
-      deliveryFee: Number(formData.feeValue || 0),
-      feeType: formData.feeType,
-      feeValue: Number(formData.feeValue || 0)
-    });
-    
-    setIsSubmitting(false);
-    navigate('/client/orders');
+    try {
+      await createOrder({
+        customerName: formData.customerName,
+        customerPhone: formData.customerPhone,
+        orderValue: Number(formData.orderValue),
+        codAmount: Number(formData.codAmount),
+        pickupAddress: { 
+          street: formData.pickupStreet, 
+          city: formData.pickupCity, 
+          state: 'NY', 
+          zip: formData.pickupZip,
+          lat: formData.pickupLat,
+          lng: formData.pickupLng
+        },
+        deliveryAddress: { 
+          street: formData.deliveryStreet, 
+          city: formData.deliveryCity, 
+          state: 'NY', 
+          zip: formData.deliveryZip,
+          lat: formData.deliveryLat,
+          lng: formData.deliveryLng
+        },
+        clientId: currentUser?.id,
+        deliveryFee: Number(formData.feeValue || 0),
+        feeType: formData.feeType,
+        feeValue: Number(formData.feeValue || 0)
+      });
+      showToast('Logistics request submitted successfully');
+      navigate('/client/orders');
+    } catch (err) {
+      showToast(err.message || 'Failed to submit logistics request', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleMapConfirm = (data) => {
