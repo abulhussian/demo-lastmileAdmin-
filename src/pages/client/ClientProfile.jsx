@@ -43,6 +43,20 @@ const ClientProfile = () => {
     state !== (currentUser.companyDetails?.address?.state || '') ||
     zip !== (currentUser.companyDetails?.address?.zip || '')
   );
+  
+  const resetForm = () => {
+    if (currentUser) {
+      setName(currentUser.name || '');
+      setPhone(currentUser.phone || '');
+      setCompanyName(currentUser.companyDetails?.companyName || '');
+      setBillingEmail(currentUser.companyDetails?.billingEmail || '');
+      setStreet(currentUser.companyDetails?.address?.street || '');
+      setCity(currentUser.companyDetails?.address?.city || '');
+      setState(currentUser.companyDetails?.address?.state || '');
+      setZip(currentUser.companyDetails?.address?.zip || '');
+    }
+  };
+
 
   if (!currentUser) return null;
 
@@ -57,7 +71,10 @@ const ClientProfile = () => {
         ...currentUser,
         name,
         phone,
-        companyDetails: {
+      };
+
+      if (currentUser.role === 'CLIENT') {
+        payload.companyDetails = {
           ...currentUser.companyDetails,
           companyName,
           billingEmail,
@@ -68,11 +85,13 @@ const ClientProfile = () => {
             zip
           },
           phone: phone // Syncing main phone to company phone
-        }
-      };
+        };
+      }
+
 
       await updateUser(currentUser.id, payload);
-      showToast('Profile updated successfully!');
+      showToast('User updated successfully');
+
     } catch (error) {
       console.error('Failed to update profile:', error);
       showToast(error.message || 'Error updating profile', 'error');
@@ -169,11 +188,14 @@ const ClientProfile = () => {
                         <Phone className="w-4 h-4 text-slate-400" /> Phone Number
                       </span>
                       <input
+                        type="tel"
+                        inputMode="numeric"
                         value={phone}
-                        onChange={e => setPhone(e.target.value)}
+                        onChange={e => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
                         placeholder="+91 00000 00000"
                         className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-900 font-medium focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all"
                       />
+
                     </label>
                   </div>
                   <div className="space-y-4">
@@ -294,11 +316,14 @@ const ClientProfile = () => {
 
             <div className="mt-12 pt-8 border-t border-slate-100 flex justify-end gap-3">
               <button 
-                onClick={() => window.location.reload()} 
-                className="px-6 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 rounded-xl transition-all"
+                type="button"
+                onClick={resetForm} 
+                disabled={!hasChanges}
+                className="px-6 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 rounded-xl transition-all disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 Discard Changes
               </button>
+
               <button
                 onClick={handleSaveProfile}
                 disabled={isSaving || !hasChanges}

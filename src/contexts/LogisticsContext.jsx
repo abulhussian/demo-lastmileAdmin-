@@ -88,8 +88,8 @@ export const LogisticsProvider = ({ children }) => {
   const mapDriver = (d) => ({
     ...mapUser(d),
     role: 'DRIVER',
-    phone: d.phone,
     vehicleNumber: d.vehicle_number || d.vehiclePlate,
+
     vehicleType: d.vehicle_type || d.vehicleType,
     cashInHand: Number(d.cash_in_hand) || 0,
     totalDeliveries: d.total_deliveries,
@@ -264,7 +264,8 @@ export const LogisticsProvider = ({ children }) => {
 
   const login = async (email, password) => {
     const response = await api.post('/auth/login', { email, password });
-    const { token, user } = response;
+    const { token, user } = response.data || response;
+
     
     // Set token in localStorage first so subsequent calls have it
     localStorage.setItem('logiflow_user', JSON.stringify({ token, ...mapUser(user) }));

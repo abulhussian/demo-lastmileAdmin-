@@ -2,15 +2,17 @@ import React, { useState } from 'react';
 import { MainLayout } from '../../components/MainLayout';
 import { useLogistics } from '../../contexts/LogisticsContext';
 import { KPICard } from '../../components/Cards';
-import { Wallet, ArrowDownCircle, ArrowUpCircle, CheckCircle2, History, AlertCircle, CheckCircle, X } from 'lucide-react';
+import { Wallet, ArrowDownCircle, ArrowUpCircle, CheckCircle2, History, AlertCircle, CheckCircle, X, Clock } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../lib/utils';
 import { cn } from '../../lib/utils';
 
 export const AdminCash = () => {
   const { drivers, settlements, settleDriverCash, showToast } = useLogistics();
 
-  const totalCashInHand = drivers.reduce((sum, d) => sum + d.cashInHand, 0);
-  const totalSettledToday = settlements.reduce((sum, s) => sum + s.amount, 0);
+  const totalCashInHand = drivers?.reduce((sum, d) => sum + Math.max(0, Number(d.cashInHand) || 0), 0) || 0;
+  const totalSettledToday = (settlements || []).reduce((sum, s) => sum + Math.max(0, Number(s.amount) || 0), 0) || 0;
+
+
 
   return (
     <MainLayout title="Cash Settlement Management">
@@ -46,8 +48,11 @@ export const AdminCash = () => {
               return (
                 <div key={log.id} className="p-6 flex items-center justify-between hover:bg-slate-50/50 transition-colors">
                   <div className="flex items-center gap-4">
-                    <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
-                      <ArrowDownCircle size={20} />
+                    <div className={cn(
+                      "p-3 rounded-xl transition-all",
+                      log.status === 'pending' ? "bg-amber-50 text-amber-600" : "bg-emerald-50 text-emerald-600"
+                    )}>
+                      {log.status === 'pending' ? <Clock size={20} /> : <ArrowDownCircle size={20} />}
                     </div>
                     <div>
                       <p className="text-sm font-bold text-slate-900">{log.driverName}</p>
@@ -55,9 +60,22 @@ export const AdminCash = () => {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-bold text-emerald-600">+{formatCurrency(log.amount)}</p>
-                    <span className="text-[10px] font-bold text-emerald-500/60 uppercase tracking-widest">{log.status}</span>
+                    <p className={cn(
+                      "text-sm font-bold",
+                      log.status === 'pending' ? "text-amber-600" : "text-emerald-600"
+                    )}>
+                      +{formatCurrency(log.amount)}
+                    </p>
+                    <span className={cn(
+                      "text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border",
+                      log.status === 'pending' 
+                        ? "bg-amber-50 text-amber-500 border-amber-100" 
+                        : "bg-emerald-50 text-emerald-500 border-emerald-100"
+                    )}>
+                      {log.status}
+                    </span>
                   </div>
+
                 </div>
               );
             }) : (

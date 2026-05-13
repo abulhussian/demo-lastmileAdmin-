@@ -5,6 +5,9 @@ import { Search, Plus, Edit2, Trash2, Shield, User as UserIcon, Eye, EyeOff } fr
 import { cn } from '../../lib/utils';
 import { ConfirmationModal } from '../../components/ConfirmationModal';
 
+
+
+
 const AdminUsers = () => {
   const { users, drivers, addUser, updateUser, deleteUser, toggleUserStatus, showToast } = useLogistics();
   const [searchTerm, setSearchTerm] = useState('');
@@ -15,6 +18,18 @@ const AdminUsers = () => {
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, user: null });
+  const [fieldErrors, setFieldErrors] = useState({});
+
+  const clearFieldError = (fieldName) => {
+    if (fieldErrors[fieldName]) {
+      setFieldErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[fieldName];
+        return newErrors;
+      });
+    }
+  };
+
 
   const allSystemUsers = Array.from(new Map([...users, ...drivers].map(u => [u.id, u])).values());
 
@@ -29,18 +44,68 @@ const AdminUsers = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setSubmitting(true);
+    setFieldErrors({});
+    
     const formData = new FormData(e.currentTarget);
+    const errors = {};
+
+    // Base validation
+    const name = (formData.get('name') || '').toString().trim();
+    const email = (formData.get('email') || '').toString().trim();
+    const phone = (formData.get('phone') || '').toString().trim();
+    const role = formData.get('role');
+
+    if (!name) errors.name = 'Full name is required';
+    if (!email) errors.email = 'Email address is required';
+    if (!phone) errors.phone = 'Phone number is required';
+    
+    if (!editingUser) {
+      const password = (formData.get('password') || '').toString().trim();
+      if (!password) errors.password = 'Password is required';
+    }
+
+    // Role-specific validation
+    if (role === 'DRIVER') {
+      const vehicleNumber = (formData.get('vehicleNumber') || '').toString().trim();
+      const vehicleType = formData.get('vehicleType');
+      if (!vehicleNumber) errors.vehicleNumber = 'Vehicle plate is required';
+      if (!vehicleType || vehicleType === 'none') errors.vehicleType = 'Vehicle type is required';
+    } else if (role === 'CLIENT') {
+      const companyName = (formData.get('companyName') || '').toString().trim();
+      const billingEmail = (formData.get('billingEmail') || '').toString().trim();
+      const companyPhone = (formData.get('companyPhone') || '').toString().trim();
+      const street = (formData.get('street') || '').toString().trim();
+      const city = (formData.get('city') || '').toString().trim();
+      const state = (formData.get('state') || '').toString().trim();
+      const zip = (formData.get('zip') || '').toString().trim();
+
+      if (!companyName) errors.companyName = 'Company name is required';
+      if (!billingEmail) errors.billingEmail = 'Billing email is required';
+      if (!companyPhone) errors.companyPhone = 'Business phone is required';
+      if (!street) errors.street = 'Street address is required';
+      if (!city) errors.city = 'City is required';
+      if (!state) errors.state = 'State is required';
+      if (!zip) errors.zip = 'ZIP code is required';
+    }
+
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      showToast('Please fix the validation errors', 'error');
+      return;
+    }
+
+    setSubmitting(true);
     const userData = {
-      name: formData.get('name'),
-      email: formData.get('email'),
+      name,
+      email,
       password: formData.get('password') || undefined,
-      role: formData.get('role'),
-      phone: formData.get('phone'),
-      vehicleNumber: selectedRole === 'DRIVER' ? formData.get('vehicleNumber') : undefined,
-      vehicleType: selectedRole === 'DRIVER' ? formData.get('vehicleType') : undefined,
+      role,
+      phone,
+      vehicleNumber: role === 'DRIVER' ? formData.get('vehicleNumber') : undefined,
+      vehicleType: role === 'DRIVER' ? formData.get('vehicleType') : undefined,
       active: editingUser ? editingUser.active : true,
-      companyDetails: selectedRole === 'CLIENT' ? {
+      companyDetails: role === 'CLIENT' ? {
         companyName: formData.get('companyName'),
         billingEmail: formData.get('billingEmail'),
         phone: formData.get('companyPhone'),
@@ -72,18 +137,22 @@ const AdminUsers = () => {
     }
   };
 
+
   const openAddModal = () => {
     setEditingUser(null);
     setSelectedRole('CLIENT');
     setShowPassword(false);
+    setFieldErrors({});
     setIsModalOpen(true);
   };
 
   const openEditModal = (user) => {
     setEditingUser(user);
     setSelectedRole(user.role);
+    setFieldErrors({});
     setIsModalOpen(true);
   };
+
 
   return (
     <MainLayout>
@@ -226,15 +295,21 @@ const AdminUsers = () => {
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6 transform animate-in slide-in-from-bottom-4 duration-300 max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold text-slate-900 mb-6">{editingUser ? 'Edit User' : 'Add New User'}</h2>
             
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} noValidate className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
                 <input
                   name="name"
                   defaultValue={editingUser?.name || ''}
-                  required
-                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  onChange={() => clearFieldError('name')}
+                  className={cn(
+                    "w-full px-4 py-2 bg-slate-50 border rounded-lg focus:outline-none focus:ring-2 transition-all",
+                    fieldErrors.name 
+                      ? "border-rose-300 focus:ring-rose-500/20 focus:border-rose-500" 
+                      : "border-slate-200 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  )}
                 />
+                {fieldErrors.name && <p className="text-rose-500 text-xs mt-1 font-medium">{fieldErrors.name}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Email Address</label>
@@ -242,19 +317,39 @@ const AdminUsers = () => {
                   name="email"
                   type="email"
                   defaultValue={editingUser?.email || ''}
-                  required
-                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  onChange={() => clearFieldError('email')}
+                  className={cn(
+                    "w-full px-4 py-2 bg-slate-50 border rounded-lg focus:outline-none focus:ring-2 transition-all",
+                    fieldErrors.email 
+                      ? "border-rose-300 focus:ring-rose-500/20 focus:border-rose-500" 
+                      : "border-slate-200 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  )}
                 />
+                {fieldErrors.email && <p className="text-rose-500 text-xs mt-1 font-medium">{fieldErrors.email}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Phone Number</label>
                 <input
                   name="phone"
+                  type="tel"
+                  inputMode="numeric"
                   defaultValue={editingUser?.phone || ''}
-                  required
-                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9]/g, '');
+                    e.target.value = val;
+                    clearFieldError('phone');
+                  }}
+                  className={cn(
+                    "w-full px-4 py-2 bg-slate-50 border rounded-lg focus:outline-none focus:ring-2 transition-all",
+                    fieldErrors.phone 
+                      ? "border-rose-300 focus:ring-rose-500/20 focus:border-rose-500" 
+                      : "border-slate-200 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  )}
                 />
+                {fieldErrors.phone && <p className="text-rose-500 text-xs mt-1 font-medium">{fieldErrors.phone}</p>}
               </div>
+
+
               {!editingUser && (
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
@@ -262,9 +357,14 @@ const AdminUsers = () => {
                     <input
                       name="password"
                       type={showPassword ? "text" : "password"}
-                      required
                       autoComplete="new-password"
-                      className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 pr-12"
+                      onChange={() => clearFieldError('password')}
+                      className={cn(
+                        "w-full px-4 py-2 bg-slate-50 border rounded-lg focus:outline-none focus:ring-2 transition-all pr-12",
+                        fieldErrors.password 
+                          ? "border-rose-300 focus:ring-rose-500/20 focus:border-rose-500" 
+                          : "border-slate-200 focus:ring-indigo-500/20 focus:border-indigo-500"
+                      )}
                     />
                     <button
                       type="button"
@@ -274,8 +374,10 @@ const AdminUsers = () => {
                       {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
+                  {fieldErrors.password && <p className="text-rose-500 text-xs mt-1 font-medium">{fieldErrors.password}</p>}
                 </div>
               )}
+
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Role</label>
                 <select
@@ -300,9 +402,15 @@ const AdminUsers = () => {
                       <input 
                         name="companyName" 
                         defaultValue={editingUser?.companyDetails?.companyName || ''} 
-                        required 
-                        className="w-full px-3 py-2 bg-white border border-indigo-100 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/10 text-sm" 
+                        onChange={() => clearFieldError('companyName')}
+                        className={cn(
+                          "w-full px-3 py-2 bg-white border rounded-lg outline-none focus:ring-2 text-sm transition-all",
+                          fieldErrors.companyName 
+                            ? "border-rose-300 focus:ring-rose-500/10 focus:border-rose-500" 
+                            : "border-indigo-100 focus:ring-indigo-500/10 focus:border-indigo-500"
+                        )}
                       />
+                      {fieldErrors.companyName && <p className="text-rose-500 text-[10px] mt-1 font-medium">{fieldErrors.companyName}</p>}
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 mb-1">Billing Email</label>
@@ -310,19 +418,39 @@ const AdminUsers = () => {
                         name="billingEmail" 
                         type="email" 
                         defaultValue={editingUser?.companyDetails?.billingEmail || ''} 
-                        required 
-                        className="w-full px-3 py-2 bg-white border border-indigo-100 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/10 text-sm" 
+                        onChange={() => clearFieldError('billingEmail')}
+                        className={cn(
+                          "w-full px-3 py-2 bg-white border rounded-lg outline-none focus:ring-2 text-sm transition-all",
+                          fieldErrors.billingEmail 
+                            ? "border-rose-300 focus:ring-rose-500/10 focus:border-rose-500" 
+                            : "border-indigo-100 focus:ring-indigo-500/10 focus:border-indigo-500"
+                        )}
                       />
+                      {fieldErrors.billingEmail && <p className="text-rose-500 text-[10px] mt-1 font-medium">{fieldErrors.billingEmail}</p>}
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 mb-1">Business Phone</label>
                       <input 
                         name="companyPhone" 
+                        type="tel"
+                        inputMode="numeric"
                         defaultValue={editingUser?.companyDetails?.phone || editingUser?.phone || ''} 
-                        required 
-                        className="w-full px-3 py-2 bg-white border border-indigo-100 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/10 text-sm" 
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^0-9]/g, '');
+                          e.target.value = val;
+                          clearFieldError('companyPhone');
+                        }}
+                        className={cn(
+                          "w-full px-3 py-2 bg-white border rounded-lg outline-none focus:ring-2 text-sm transition-all",
+                          fieldErrors.companyPhone 
+                            ? "border-rose-300 focus:ring-rose-500/10 focus:border-rose-500" 
+                            : "border-indigo-100 focus:ring-indigo-500/10 focus:border-indigo-500"
+                        )}
                       />
+                      {fieldErrors.companyPhone && <p className="text-rose-500 text-[10px] mt-1 font-medium">{fieldErrors.companyPhone}</p>}
                     </div>
+
+
                   </div>
 
 
@@ -353,31 +481,68 @@ const AdminUsers = () => {
                   <div className="pt-2">
                     <label className="block text-xs font-semibold text-slate-600 mb-1">Office Address</label>
                     <div className="grid grid-cols-2 gap-2">
-                      <input 
-                        name="street" 
-                        defaultValue={editingUser?.companyDetails?.address?.street || ''} 
-                        placeholder="Street Address" 
-                        className="col-span-2 px-3 py-2 bg-white border border-indigo-100 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/10 text-xs" 
-                      />
-                      <input 
-                        name="city" 
-                        defaultValue={editingUser?.companyDetails?.address?.city || ''} 
-                        placeholder="City" 
-                        className="px-3 py-2 bg-white border border-indigo-100 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/10 text-xs" 
-                      />
-                      <input 
-                        name="state" 
-                        defaultValue={editingUser?.companyDetails?.address?.state || ''} 
-                        placeholder="State" 
-                        className="px-3 py-2 bg-white border border-indigo-100 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/10 text-xs" 
-                      />
-                      <input 
-                        name="zip" 
-                        defaultValue={editingUser?.companyDetails?.address?.zip || ''} 
-                        placeholder="ZIP Code" 
-                        className="col-span-2 px-3 py-2 bg-white border border-indigo-100 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/10 text-xs" 
-                      />
+                      <div className="col-span-2">
+                        <input 
+                          name="street" 
+                          defaultValue={editingUser?.companyDetails?.address?.street || ''} 
+                          placeholder="Street Address" 
+                          onChange={() => clearFieldError('street')}
+                          className={cn(
+                            "w-full px-3 py-2 bg-white border rounded-lg outline-none focus:ring-2 text-xs transition-all",
+                            fieldErrors.street 
+                              ? "border-rose-300 focus:ring-rose-500/10 focus:border-rose-500" 
+                              : "border-indigo-100 focus:ring-indigo-500/10 focus:border-indigo-500"
+                          )}
+                        />
+                        {fieldErrors.street && <p className="text-rose-500 text-[10px] mt-0.5 font-medium">{fieldErrors.street}</p>}
+                      </div>
+                      <div>
+                        <input 
+                          name="city" 
+                          defaultValue={editingUser?.companyDetails?.address?.city || ''} 
+                          placeholder="City" 
+                          onChange={() => clearFieldError('city')}
+                          className={cn(
+                            "w-full px-3 py-2 bg-white border rounded-lg outline-none focus:ring-2 text-xs transition-all",
+                            fieldErrors.city 
+                              ? "border-rose-300 focus:ring-rose-500/10 focus:border-rose-500" 
+                              : "border-indigo-100 focus:ring-indigo-500/10 focus:border-indigo-500"
+                          )}
+                        />
+                        {fieldErrors.city && <p className="text-rose-500 text-[10px] mt-0.5 font-medium">{fieldErrors.city}</p>}
+                      </div>
+                      <div>
+                        <input 
+                          name="state" 
+                          defaultValue={editingUser?.companyDetails?.address?.state || ''} 
+                          placeholder="State" 
+                          onChange={() => clearFieldError('state')}
+                          className={cn(
+                            "w-full px-3 py-2 bg-white border rounded-lg outline-none focus:ring-2 text-xs transition-all",
+                            fieldErrors.state 
+                              ? "border-rose-300 focus:ring-rose-500/10 focus:border-rose-500" 
+                              : "border-indigo-100 focus:ring-indigo-500/10 focus:border-indigo-500"
+                          )}
+                        />
+                        {fieldErrors.state && <p className="text-rose-500 text-[10px] mt-0.5 font-medium">{fieldErrors.state}</p>}
+                      </div>
+                      <div className="col-span-2">
+                        <input 
+                          name="zip" 
+                          defaultValue={editingUser?.companyDetails?.address?.zip || ''} 
+                          placeholder="ZIP Code" 
+                          onChange={() => clearFieldError('zip')}
+                          className={cn(
+                            "w-full px-3 py-2 bg-white border rounded-lg outline-none focus:ring-2 text-xs transition-all",
+                            fieldErrors.zip 
+                              ? "border-rose-300 focus:ring-rose-500/10 focus:border-rose-500" 
+                              : "border-indigo-100 focus:ring-indigo-500/10 focus:border-indigo-500"
+                          )}
+                        />
+                        {fieldErrors.zip && <p className="text-rose-500 text-[10px] mt-0.5 font-medium">{fieldErrors.zip}</p>}
+                      </div>
                     </div>
+
                   </div>
                 </div>
               )}
@@ -391,24 +556,37 @@ const AdminUsers = () => {
                       type="text"
                       placeholder="ABC-123"
                       defaultValue={editingUser?.vehicleNumber || ''}
-                      required
-                      className="w-full px-4 py-2 bg-white border border-indigo-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20"
+                      onChange={() => clearFieldError('vehicleNumber')}
+                      className={cn(
+                        "w-full px-4 py-2 bg-white border rounded-lg outline-none focus:ring-2 transition-all",
+                        fieldErrors.vehicleNumber 
+                          ? "border-rose-300 focus:ring-rose-500/20 focus:border-rose-500" 
+                          : "border-indigo-200 focus:ring-indigo-500/20 focus:border-indigo-500"
+                      )}
                     />
+                    {fieldErrors.vehicleNumber && <p className="text-rose-500 text-[10px] mt-1 font-medium">{fieldErrors.vehicleNumber}</p>}
                   </div>
-                  <div>
+                  <div className="col-span-2 md:col-span-1">
                     <label className="block text-xs font-bold text-indigo-600 uppercase tracking-widest mb-1">Vehicle Type</label>
                     <select
                       name="vehicleType"
                       defaultValue={editingUser?.vehicleType || 'Van'}
-                      required
-                      className="w-full px-4 py-2 bg-white border border-indigo-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20"
+                      onChange={() => clearFieldError('vehicleType')}
+                      className={cn(
+                        "w-full px-4 py-2 bg-white border rounded-lg outline-none focus:ring-2 transition-all",
+                        fieldErrors.vehicleType 
+                          ? "border-rose-300 focus:ring-rose-500/20 focus:border-rose-500" 
+                          : "border-indigo-200 focus:ring-indigo-500/20 focus:border-indigo-500"
+                      )}
                     >
+                      <option value="none">Select Type</option>
                       <option value="Bike">Bike</option>
                       <option value="Van">Van</option>
                       <option value="Truck">Truck</option>
-                      <option value="none">None</option>
                     </select>
+                    {fieldErrors.vehicleType && <p className="text-rose-500 text-[10px] mt-1 font-medium">{fieldErrors.vehicleType}</p>}
                   </div>
+
                 </div>
               )}
               <div className="flex justify-end gap-3 mt-8">

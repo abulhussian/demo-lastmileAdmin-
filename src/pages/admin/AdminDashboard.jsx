@@ -42,7 +42,7 @@ export const AdminDashboard = () => {
   const totalOrders = stats?.total_orders || orders.length;
   const activeDrivers = drivers.filter(d => d.active).length;
   const totalRevenue = stats?.total_revenue || orders.reduce((sum, o) => sum + (Number(o.orderValue) || 0), 0);
-  const driverCash = stats?.total_outstanding || drivers.reduce((sum, d) => sum + (Number(d.cashInHand) || 0), 0);
+  const driverCash = stats?.total_outstanding || drivers.reduce((sum, d) => sum + Math.max(0, Number(d.cashInHand) || 0), 0);
 
   const pendingOrders = orders.filter(o => o.status === 'PENDING').length;
   const deliveredToday = orders.filter(o => o.status === 'DELIVERED').length;

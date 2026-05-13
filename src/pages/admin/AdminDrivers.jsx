@@ -31,6 +31,18 @@ export const AdminDrivers = () => {
   const [driverHistory, setDriverHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
+
+  const clearFieldError = (fieldName) => {
+    if (fieldErrors[fieldName]) {
+      setFieldErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[fieldName];
+        return newErrors;
+      });
+    }
+  };
+
 
   const filteredDrivers = drivers.filter(driver => {
     const name = driver.name || '';
@@ -41,16 +53,40 @@ export const AdminDrivers = () => {
 
   const handleAddDriver = async (e) => {
     e.preventDefault();
+    setFieldErrors({});
+    
+    const formData = new FormData(e.currentTarget);
+    const errors = {};
+
+    const name = (formData.get('name') || '').toString().trim();
+    const email = (formData.get('email') || '').toString().trim();
+    const phone = (formData.get('phone') || '').toString().trim();
+    const vehicleNumber = (formData.get('vehicleNumber') || '').toString().trim();
+    const vehicleType = formData.get('vehicleType');
+    const password = (formData.get('password') || '').toString().trim();
+
+    if (!name) errors.name = 'Full name is required';
+    if (!email) errors.email = 'Email address is required';
+    if (!phone) errors.phone = 'Phone number is required';
+    if (!vehicleNumber) errors.vehicleNumber = 'Vehicle plate is required';
+    if (!vehicleType) errors.vehicleType = 'Vehicle type is required';
+    if (!password) errors.password = 'Password is required';
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      showToast('Please fix the validation errors', 'error');
+      return;
+    }
+
     setSubmitting(true);
     try {
-      const formData = new FormData(e.currentTarget);
       await addUser({
-        name: formData.get('name'),
-        email: formData.get('email'),
-        password: formData.get('password') || 'password123',
-        phone: formData.get('phone'),
-        vehicleNumber: formData.get('vehicleNumber'),
-        vehicleType: formData.get('vehicleType'),
+        name,
+        email,
+        password,
+        phone,
+        vehicleNumber,
+        vehicleType,
         role: 'DRIVER',
         active: true,
       });
@@ -62,6 +98,7 @@ export const AdminDrivers = () => {
       setSubmitting(false);
     }
   };
+
 
   const fetchDriverHistory = async (driver) => {
     setHistoryDriver(driver);
@@ -279,33 +316,81 @@ export const AdminDrivers = () => {
               <h2 className="text-xl font-bold text-slate-900">Register New Driver</h2>
               <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-50 rounded-lg text-slate-400"><X size={20} /></button>
             </div>
-            <form onSubmit={handleAddDriver} className="space-y-5">
+            <form onSubmit={handleAddDriver} noValidate className="space-y-5">
               <div>
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5">Driver Full Name</label>
-                <input name="name" required className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm font-medium" />
+                <input 
+                  name="name" 
+                  onChange={() => clearFieldError('name')}
+                  className={cn(
+                    "w-full px-4 py-2.5 bg-slate-50 border rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm font-medium",
+                    fieldErrors.name ? "border-rose-300" : "border-slate-200"
+                  )} 
+                />
+                {fieldErrors.name && <p className="text-rose-500 text-[10px] mt-1 font-bold uppercase">{fieldErrors.name}</p>}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5">Vehicle Plate</label>
-                  <input name="vehicleNumber" required placeholder="ABC-123" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm font-medium" />
+                  <input 
+                    name="vehicleNumber" 
+                    placeholder="ABC-123" 
+                    onChange={() => clearFieldError('vehicleNumber')}
+                    className={cn(
+                      "w-full px-4 py-2.5 bg-slate-50 border rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm font-medium",
+                      fieldErrors.vehicleNumber ? "border-rose-300" : "border-slate-200"
+                    )} 
+                  />
+                  {fieldErrors.vehicleNumber && <p className="text-rose-500 text-[10px] mt-1 font-bold uppercase">{fieldErrors.vehicleNumber}</p>}
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5">Vehicle Type</label>
-                  <select name="vehicleType" required className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm font-medium">
+                  <select 
+                    name="vehicleType" 
+                    onChange={() => clearFieldError('vehicleType')}
+                    className={cn(
+                      "w-full px-4 py-2.5 bg-slate-50 border rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm font-medium",
+                      fieldErrors.vehicleType ? "border-rose-300" : "border-slate-200"
+                    )}
+                  >
                     <option value="Bike">Bike</option>
                     <option value="Van">Van</option>
                     <option value="Truck">Truck</option>
                   </select>
+                  {fieldErrors.vehicleType && <p className="text-rose-500 text-[10px] mt-1 font-bold uppercase">{fieldErrors.vehicleType}</p>}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5">Email</label>
-                  <input name="email" type="email" required className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm font-medium" />
+                  <input 
+                    name="email" 
+                    type="email" 
+                    onChange={() => clearFieldError('email')}
+                    className={cn(
+                      "w-full px-3 py-2.5 bg-slate-50 border rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm font-medium",
+                      fieldErrors.email ? "border-rose-300" : "border-slate-200"
+                    )} 
+                  />
+                  {fieldErrors.email && <p className="text-rose-500 text-[10px] mt-1 font-bold uppercase">{fieldErrors.email}</p>}
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5">Phone</label>
-                  <input name="phone" required className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm font-medium" />
+                  <input 
+                    name="phone" 
+                    type="tel"
+                    inputMode="numeric"
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^0-9]/g, '');
+                      e.target.value = val;
+                      clearFieldError('phone');
+                    }}
+                    className={cn(
+                      "w-full px-3 py-2.5 bg-slate-50 border rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm font-medium",
+                      fieldErrors.phone ? "border-rose-300" : "border-slate-200"
+                    )} 
+                  />
+                  {fieldErrors.phone && <p className="text-rose-500 text-[10px] mt-1 font-bold uppercase">{fieldErrors.phone}</p>}
                 </div>
               </div>
 
@@ -316,8 +401,11 @@ export const AdminDrivers = () => {
                     name="password" 
                     type={showPassword ? "text" : "password"} 
                     defaultValue="password123" 
-                    required 
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm font-medium pr-10" 
+                    onChange={() => clearFieldError('password')}
+                    className={cn(
+                      "w-full px-4 py-2.5 bg-slate-50 border rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm font-medium pr-10",
+                      fieldErrors.password ? "border-rose-300" : "border-slate-200"
+                    )} 
                   />
                   <button
                     type="button"
@@ -327,7 +415,9 @@ export const AdminDrivers = () => {
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
+                {fieldErrors.password && <p className="text-rose-500 text-[10px] mt-1 font-bold uppercase">{fieldErrors.password}</p>}
               </div>
+
 
               <div className="flex justify-end gap-3 mt-10">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 text-slate-500 hover:bg-slate-50 rounded-xl font-bold text-xs">Cancel</button>

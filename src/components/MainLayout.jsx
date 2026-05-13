@@ -1,6 +1,6 @@
 import React from 'react';
 import { Sidebar } from './Sidebar';
-import { Bell, Search, CheckCircle, AlertCircle, X } from 'lucide-react';
+import { Bell, CheckCircle, AlertCircle, X } from 'lucide-react';
 import { useLogistics } from '../contexts/LogisticsContext';
 import { cn } from '../lib/utils';
 
@@ -15,15 +15,8 @@ export const MainLayout = ({ children, title }) => {
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 z-10">
           <div className="flex items-center gap-4">
             <h1 className="text-lg font-bold text-slate-900">{title}</h1>
-            <div className="hidden md:flex items-center bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
-              <Search size={14} className="text-slate-400 mr-2" />
-              <input 
-                type="text" 
-                placeholder="Find orders..." 
-                className="bg-transparent border-none outline-none text-[13px] w-64 placeholder:text-slate-400"
-              />
-            </div>
           </div>
+
 
           <div className="flex items-center gap-4">
             <button className="relative p-2 text-slate-400 hover:bg-slate-50 rounded-full transition-colors">

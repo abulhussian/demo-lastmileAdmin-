@@ -48,6 +48,16 @@ export const ClientCreateOrder = () => {
     }
   }, [currentUser]);
 
+  const calculateDeliveryFee = () => {
+    const codAmount = Number(formData.codAmount || 0);
+    const feeValue = Number(formData.feeValue || 0);
+    if (formData.feeType === 'PERCENTAGE') {
+      return (codAmount * feeValue) / 100;
+    }
+    return feeValue;
+  };
+
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -63,6 +73,8 @@ export const ClientCreateOrder = () => {
 
     setIsSubmitting(true);
     
+    const deliveryFee = calculateDeliveryFee();
+
     try {
       await createOrder({
         customerName: formData.customerName,
@@ -86,7 +98,7 @@ export const ClientCreateOrder = () => {
           lng: formData.deliveryLng
         },
         clientId: currentUser?.id,
-        deliveryFee: Number(formData.feeValue || 0),
+        deliveryFee: deliveryFee,
         feeType: formData.feeType,
         feeValue: Number(formData.feeValue || 0)
       });
@@ -98,6 +110,7 @@ export const ClientCreateOrder = () => {
       setIsSubmitting(false);
     }
   };
+
 
   const handleMapConfirm = (data) => {
     if (mapModal === 'PICKUP') {
@@ -331,6 +344,17 @@ export const ClientCreateOrder = () => {
                       />
                     </div>
 
+                    <div className="md:col-span-2 pt-4 border-t border-indigo-100 flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Calculated Delivery Fee</p>
+                        <p className="text-xl font-black text-indigo-600">${calculateDeliveryFee().toFixed(2)}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Model</p>
+                        <p className="text-xs font-bold text-slate-600">{formData.feeType === 'PERCENTAGE' ? `${formData.feeValue}% of COD` : 'Fixed Rate'}</p>
+                      </div>
+                    </div>
+
                     {/* Admin Fee Options */}
                     {currentUser?.role === 'ADMIN' && (
                       <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-indigo-100/50 mt-2 animate-in fade-in slide-in-from-top-2">
@@ -346,7 +370,7 @@ export const ClientCreateOrder = () => {
                           </select>
                         </div>
                         <div className="space-y-1.5">
-                          <label className="text-sm font-bold text-indigo-600">Fee Value</label>
+                          <label className="text-sm font-bold text-indigo-600">Fee Value {formData.feeType === 'PERCENTAGE' ? '(%)' : '($)'}</label>
                           <input 
                             type="number"
                             className="w-full px-4 py-2 bg-white border border-indigo-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20"
@@ -357,6 +381,7 @@ export const ClientCreateOrder = () => {
                         </div>
                       </div>
                     )}
+
                   </div>
                 </div>
               </div>

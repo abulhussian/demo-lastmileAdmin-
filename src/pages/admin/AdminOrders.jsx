@@ -413,11 +413,21 @@ export const AdminOrders = () => {
               onSubmit={async (e) => {
                 e.preventDefault();
                 const formData = new FormData(e.currentTarget);
+                const codAmount = Number(formData.get('codAmount'));
+                let deliveryFee = 0;
+                
+                if (currentUser?.role === 'CLIENT' && currentUser?.companyDetails) {
+                  const { feeType, feeValue } = currentUser.companyDetails;
+                  deliveryFee = feeType === 'PERCENTAGE' 
+                    ? (codAmount * (feeValue || 0)) / 100 
+                    : (feeValue || 0);
+                }
+
                 await createOrder({
                   customerName: formData.get('customerName'),
                   customerPhone: formData.get('customerPhone'),
                   orderValue: Number(formData.get('orderValue')),
-                  codAmount: Number(formData.get('codAmount')),
+                  codAmount: codAmount,
                   pickupAddress: { street: 'Main Warehouse', city: 'NYC', state: 'NY', zip: '10001' },
                   deliveryAddress: {
                     street: formData.get('deliveryStreet'),
@@ -425,10 +435,12 @@ export const AdminOrders = () => {
                     state: 'NY',
                     zip: formData.get('deliveryZip')
                   },
-                  deliveryFee: currentUser?.role === 'CLIENT' ? currentUser?.companyDetails?.feeValue : 0
+                  deliveryFee: deliveryFee
                 });
                 setIsCreating(false);
               }}
+
+
               className="p-6 space-y-4"
             >
               <div className="grid grid-cols-2 gap-4">
