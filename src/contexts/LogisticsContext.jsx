@@ -82,6 +82,8 @@ export const LogisticsProvider = ({ children }) => {
       } : undefined,
       vehicleNumber: u.vehicle_number,
       vehicleType: u.vehicle_type,
+      lat: u.lat,
+      lng: u.long || u.lng
     };
   };
 

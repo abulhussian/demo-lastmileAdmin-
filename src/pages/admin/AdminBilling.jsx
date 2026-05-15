@@ -429,7 +429,7 @@ export const AdminBilling = () => {
                     <div className="space-y-2 md:col-span-2">
                       <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Extra Service Charges (Optional)</label>
                       <div className="relative">
-                        <span className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
+                        <span className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 font-bold">SAR</span>
                         <input
                           type="number"
                           value={extraCharges}

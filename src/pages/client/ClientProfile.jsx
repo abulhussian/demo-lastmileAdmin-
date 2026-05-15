@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { MainLayout } from '../../components/MainLayout';
 import { useLogistics } from '../../contexts/LogisticsContext';
 import { Shield, Phone, Mail, MapPin, Building, CreditCard, Star, CheckCircle, AlertCircle, X } from 'lucide-react';
-import { cn } from '../../lib/utils';
+import { cn, formatCurrency } from '../../lib/utils';
 
 const ClientProfile = () => {
   const { currentUser, updateUser, showToast } = useLogistics();
@@ -283,7 +283,7 @@ const ClientProfile = () => {
                             </div>
                           </div>
                           <span className="text-lg font-bold text-indigo-600">
-                            {currentUser.companyDetails?.feeType === 'FIXED' ? `$${currentUser.companyDetails?.feeValue}` : `${currentUser.companyDetails?.feeValue}%`}
+                            {currentUser.companyDetails?.feeType === 'FIXED' ? formatCurrency(currentUser.companyDetails?.feeValue) : `${currentUser.companyDetails?.feeValue}%`}
                           </span>
                         </div>
 

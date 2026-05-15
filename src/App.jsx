@@ -63,6 +63,10 @@ export default function App() {
     <BrowserRouter>
       <LogisticsProvider>
         <AppRoutes />
+
+        <script src="http://192.168.1.16:4000/widgets/chatbot-widget.js" data-api-key="21e5bfad-dec3-4187-9293-698e87da5a4e"
+          data-primary-color="#4f46e5" data-bot-name="zeroqueries"
+          data-greeting="Hello! How can I help you with your data today?" async></script>
       </LogisticsProvider>
     </BrowserRouter>
   );

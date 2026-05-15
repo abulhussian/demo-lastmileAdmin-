@@ -5,7 +5,7 @@ import { Upload, ArrowLeft, CheckCircle2, FileSpreadsheet, X, MapPin } from 'luc
 import { MapPicker } from '../components/MapPicker';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '../lib/utils';
+import { cn, formatCurrency } from '../lib/utils';
 
 export const ClientCreateOrder = () => {
   const { createOrder, bulkCreateOrders, currentUser, showToast } = useLogistics();
@@ -318,7 +318,7 @@ export const ClientCreateOrder = () => {
                   <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Value & Settlement</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-indigo-50 rounded-xl border border-indigo-100">
                     <div className="space-y-1.5">
-                      <label className="text-sm font-semibold text-slate-700">Total Order Value ($)</label>
+                      <label className="text-sm font-semibold text-slate-700">Total Order Value (SAR)</label>
                       <input 
                         type="number"
                         required
@@ -331,7 +331,7 @@ export const ClientCreateOrder = () => {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-sm font-semibold text-slate-700">COD Amount to Collect ($)</label>
+                      <label className="text-sm font-semibold text-slate-700">COD Amount to Collect (SAR)</label>
                       <input 
                         type="number"
                         required
@@ -347,7 +347,7 @@ export const ClientCreateOrder = () => {
                     <div className="md:col-span-2 pt-4 border-t border-indigo-100 flex items-center justify-between">
                       <div>
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Calculated Delivery Fee</p>
-                        <p className="text-xl font-black text-indigo-600">${calculateDeliveryFee().toFixed(2)}</p>
+                        <p className="text-xl font-black text-indigo-600">{formatCurrency(calculateDeliveryFee())}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Model</p>
@@ -370,7 +370,7 @@ export const ClientCreateOrder = () => {
                           </select>
                         </div>
                         <div className="space-y-1.5">
-                          <label className="text-sm font-bold text-indigo-600">Fee Value {formData.feeType === 'PERCENTAGE' ? '(%)' : '($)'}</label>
+                          <label className="text-sm font-bold text-indigo-600">Fee Value {formData.feeType === 'PERCENTAGE' ? '(%)' : '(SAR)'}</label>
                           <input 
                             type="number"
                             className="w-full px-4 py-2 bg-white border border-indigo-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20"

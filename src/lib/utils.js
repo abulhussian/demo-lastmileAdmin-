@@ -18,7 +18,8 @@ export function cn(...inputs) {
 export function formatCurrency(amount) {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'SAR',
+    minimumFractionDigits: 2
   }).format(amount);
 }
 

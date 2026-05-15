@@ -25,8 +25,15 @@ export const AdminOrders = () => {
   const [isCreating, setIsCreating] = useState(false);
   const navigate = useNavigate();
   const [isAssigning, setIsAssigning] = useState(false);
-
   const isAdmin = currentUser?.role === 'ADMIN';
+
+  const openInMap = (lat, lng, address) => {
+    if (lat && lng) {
+      window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank');
+    } else if (address) {
+      window.open(`https://www.google.com/maps?q=${encodeURIComponent(address)}`, '_blank');
+    }
+  };
 
   const filteredOrders = orders.filter(order => {
     // Client security filter
@@ -265,20 +272,48 @@ export const AdminOrders = () => {
                     <div className="relative pl-6">
                       <div className="absolute left-0 top-1 w-3 h-3 rounded-full bg-indigo-500 border-2 border-white shadow-sm z-10" />
                       <p className="text-[10px] font-bold text-slate-400 uppercase whitespace-nowrap">Pickup Address</p>
-                      <p className="text-[12px] font-medium text-slate-700 mt-0.5">
+                      <button 
+                        onClick={() => openInMap(selectedOrder.pickupAddress?.lat, selectedOrder.pickupAddress?.lng, selectedOrder.pickupAddress?.street)}
+                        className="text-[12px] font-medium text-slate-700 mt-0.5 hover:text-indigo-600 transition-colors text-left block w-full"
+                      >
                         {selectedOrder.pickupAddress?.city
                           ? `${selectedOrder.pickupAddress.street}, ${selectedOrder.pickupAddress.city}`
                           : selectedOrder.pickupAddress?.street || 'N/A'}
-                      </p>
+                      </button>
                     </div>
+
+                    {selectedOrder.driverId && (
+                      <div className="relative pl-6">
+                        <div className="absolute left-0 top-1 w-3 h-3 rounded-full bg-amber-500 border-2 border-white shadow-sm z-10 animate-pulse" />
+                        <p className="text-[10px] font-bold text-slate-400 uppercase whitespace-nowrap">Driver Location (Now)</p>
+                        <button 
+                          onClick={() => {
+                            const driver = drivers.find(d => d.id === selectedOrder.driverId);
+                            if (driver) {
+                              openInMap(driver.lat, driver.lng);
+                            }
+                          }}
+                          className="text-[12px] font-medium text-slate-700 mt-0.5 hover:text-indigo-600 transition-colors text-left block w-full"
+                        >
+                          {(() => {
+                            const driver = drivers.find(d => d.id === selectedOrder.driverId);
+                            return driver?.lat ? `${driver.name} is currently here (Click to view)` : `${driver?.name || 'Driver'} location unavailable`;
+                          })()}
+                        </button>
+                      </div>
+                    )}
+
                     <div className="relative pl-6">
                       <div className="absolute left-0 top-1 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white shadow-sm z-10" />
                       <p className="text-[10px] font-bold text-slate-400 uppercase whitespace-nowrap">Delivery Address</p>
-                      <p className="text-[12px] font-medium text-slate-700 mt-0.5">
+                      <button 
+                        onClick={() => openInMap(selectedOrder.deliveryAddress?.lat, selectedOrder.deliveryAddress?.lng, selectedOrder.deliveryAddress?.street)}
+                        className="text-[12px] font-medium text-slate-700 mt-0.5 hover:text-indigo-600 transition-colors text-left block w-full"
+                      >
                         {selectedOrder.deliveryAddress?.city
                           ? `${selectedOrder.deliveryAddress.street}, ${selectedOrder.deliveryAddress.city}`
                           : selectedOrder.deliveryAddress?.street || 'N/A'}
-                      </p>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -469,11 +504,11 @@ export const AdminOrders = () => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase">Value ($)</label>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase">Value (SAR)</label>
                   <input name="orderValue" type="number" defaultValue="0" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase">COD ($)</label>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase">COD (SAR)</label>
                   <input name="codAmount" type="number" defaultValue="0" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500" />
                 </div>
               </div>
