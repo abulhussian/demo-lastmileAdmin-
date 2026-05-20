@@ -102,6 +102,7 @@ const AdminUsers = () => {
       password: formData.get('password') || undefined,
       role,
       phone,
+      currency: role === 'CLIENT' ? formData.get('currency') : undefined,
       vehicleNumber: role === 'DRIVER' ? formData.get('vehicleNumber') : undefined,
       vehicleType: role === 'DRIVER' ? formData.get('vehicleType') : undefined,
       active: editingUser ? editingUser.active : true,
@@ -412,7 +413,7 @@ const AdminUsers = () => {
                       />
                       {fieldErrors.companyName && <p className="text-rose-500 text-[10px] mt-1 font-medium">{fieldErrors.companyName}</p>}
                     </div>
-                    <div>
+                    <div className="col-span-2">
                       <label className="block text-xs font-semibold text-slate-600 mb-1">Billing Email</label>
                       <input 
                         name="billingEmail" 
@@ -448,6 +449,24 @@ const AdminUsers = () => {
                         )}
                       />
                       {fieldErrors.companyPhone && <p className="text-rose-500 text-[10px] mt-1 font-medium">{fieldErrors.companyPhone}</p>}
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">Currency</label>
+                      <select 
+                        name="currency" 
+                        defaultValue={editingUser?.currency || 'SAR'} 
+                        className="w-full px-3 py-2 bg-white border border-indigo-100 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/10 text-sm"
+                      >
+                        <option value="SAR">SAR (Saudi Riyal)</option>
+                        <option value="USD">USD (US Dollar)</option>
+                        <option value="AED">AED (UAE Dirham)</option>
+                        <option value="EUR">EUR (Euro)</option>
+                        <option value="EGP">EGP (Egyptian Pound)</option>
+                        <option value="KWD">KWD (Kuwaiti Dinar)</option>
+                        <option value="BHD">BHD (Bahraini Dinar)</option>
+                        <option value="QAR">QAR (Qatari Riyal)</option>
+                        <option value="OMR">OMR (Omani Rial)</option>
+                      </select>
                     </div>
 
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MainLayout } from '../../components/MainLayout';
 import { useLogistics } from '../../contexts/LogisticsContext';
 import { StatusBadge } from '../../components/Cards';
@@ -6,6 +6,7 @@ import { formatCurrency, formatDate, cn } from '../../lib/utils';
 import { Search, MoreVertical, MapPin, Phone, User as UserIcon, Plus, Package, X, Truck, Download, Upload, FileSpreadsheet, CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { api } from '../../lib/api';
 
 const OrderStatus = {
   PENDING: 'PENDING',
@@ -17,7 +18,7 @@ const OrderStatus = {
 };
 
 export const AdminOrders = () => {
-  const { orders, drivers, updateOrderStatus, assignDriver, createOrder, deleteOrder, currentUser, bulkCreateOrders } = useLogistics();
+  const { orders, drivers, users, updateOrderStatus, assignDriver, createOrder, deleteOrder, cancelOrder, currentUser, bulkCreateOrders } = useLogistics();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -26,6 +27,53 @@ export const AdminOrders = () => {
   const navigate = useNavigate();
   const [isAssigning, setIsAssigning] = useState(false);
   const isAdmin = currentUser?.role === 'ADMIN';
+
+  const getOrderCurrency = (order) => {
+    if (!order) return 'SAR';
+    if (order.currency) {
+      return order.currency;
+    }
+    if (currentUser?.role === 'CLIENT') {
+      return currentUser.currency || 'SAR';
+    }
+    const client = users?.find(u => u.id === order.clientId);
+    return client?.currency || 'SAR';
+  };
+
+  const [driverLocation, setDriverLocation] = useState(null);
+  const [loadingLocation, setLoadingLocation] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    const fetchDriverLocation = async () => {
+      if (!selectedOrder?.driverId) {
+        setDriverLocation(null);
+        return;
+      }
+      setLoadingLocation(true);
+      try {
+        const response = await api.get(`/drivers/${selectedOrder.driverId}/location`);
+        if (active) {
+          setDriverLocation(response.data || response || null);
+        }
+      } catch (err) {
+        console.error('Failed to fetch driver location:', err);
+        if (active) {
+          setDriverLocation(null);
+        }
+      } finally {
+        if (active) {
+          setLoadingLocation(false);
+        }
+      }
+    };
+
+    fetchDriverLocation();
+
+    return () => {
+      active = false;
+    };
+  }, [selectedOrder?.driverId]);
 
   const openInMap = (lat, lng, address) => {
     if (lat && lng) {
@@ -206,8 +254,8 @@ export const AdminOrders = () => {
                     <StatusBadge status={order.status} />
                   </td>
                   <td className="px-6 py-5">
-                    <p className="text-[12px] font-bold text-slate-700">{formatCurrency(order.deliveryFee)}</p>
-                    {order.codAmount > 0 && <p className="text-[10px] text-emerald-600 font-bold uppercase">COD: {formatCurrency(order.codAmount)}</p>}
+                    <p className="text-[12px] font-bold text-slate-700">{formatCurrency(order.deliveryFee, getOrderCurrency(order))}</p>
+                    {order.codAmount > 0 && <p className="text-[10px] text-emerald-600 font-bold uppercase">COD: {formatCurrency(order.codAmount, getOrderCurrency(order))}</p>}
                   </td>
                   <td className="px-6 py-5 text-right" onClick={(e) => e.stopPropagation()}>
                     <button className="p-2 text-slate-300 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-all">
@@ -286,20 +334,64 @@ export const AdminOrders = () => {
                       <div className="relative pl-6">
                         <div className="absolute left-0 top-1 w-3 h-3 rounded-full bg-amber-500 border-2 border-white shadow-sm z-10 animate-pulse" />
                         <p className="text-[10px] font-bold text-slate-400 uppercase whitespace-nowrap">Driver Location (Now)</p>
-                        <button 
-                          onClick={() => {
-                            const driver = drivers.find(d => d.id === selectedOrder.driverId);
-                            if (driver) {
-                              openInMap(driver.lat, driver.lng);
-                            }
-                          }}
-                          className="text-[12px] font-medium text-slate-700 mt-0.5 hover:text-indigo-600 transition-colors text-left block w-full"
-                        >
-                          {(() => {
-                            const driver = drivers.find(d => d.id === selectedOrder.driverId);
-                            return driver?.lat ? `${driver.name} is currently here (Click to view)` : `${driver?.name || 'Driver'} location unavailable`;
-                          })()}
-                        </button>
+                        {loadingLocation ? (
+                          <div className="text-[12px] font-medium text-slate-400 mt-0.5 flex items-center gap-1.5 animate-pulse">
+                            <span className="inline-block w-2.5 h-2.5 border-2 border-slate-300 border-t-indigo-600 rounded-full animate-spin"></span>
+                            Fetching live location...
+                          </div>
+                        ) : (() => {
+                          const driver = drivers.find(d => d.id === selectedOrder.driverId);
+                          const driverName = driver?.name || 'Driver';
+                          
+                          if (driverLocation) {
+                            const timeStr = driverLocation.updated_at || driverLocation.created_at
+                              ? new Date(driverLocation.updated_at || driverLocation.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                              : '';
+                            return (
+                              <button 
+                                onClick={() => openInMap(driverLocation.latitude, driverLocation.longitude)}
+                                className="text-[12px] font-medium text-slate-700 mt-0.5 hover:text-indigo-600 transition-colors text-left block w-full group"
+                              >
+                                <span className="font-semibold text-indigo-600 group-hover:underline">
+                                  {driverName} is currently here:
+                                </span>
+                                <span className="block text-slate-500 text-[11px] mt-0.5">
+                                  Lat: {parseFloat(driverLocation.latitude).toFixed(6)}, Lng: {parseFloat(driverLocation.longitude).toFixed(6)}
+                                  {timeStr && ` (Updated at ${timeStr})`}
+                                </span>
+                                <span className="text-[10px] text-indigo-500 font-bold block mt-1 hover:underline">
+                                  👉 Click to track on Google Maps
+                                </span>
+                              </button>
+                            );
+                          }
+                          
+                          // Fallback to static location from drivers context
+                          if (driver?.lat && driver?.lng) {
+                            return (
+                              <button 
+                                onClick={() => openInMap(driver.lat, driver.lng)}
+                                className="text-[12px] font-medium text-slate-700 mt-0.5 hover:text-indigo-600 transition-colors text-left block w-full group"
+                              >
+                                <span className="font-semibold text-slate-600">
+                                  {driverName} is currently here:
+                                </span>
+                                <span className="block text-slate-500 text-[11px] mt-0.5">
+                                  Lat: {parseFloat(driver.lat).toFixed(6)}, Lng: {parseFloat(driver.lng).toFixed(6)} (Static Fallback)
+                                </span>
+                                <span className="text-[10px] text-indigo-500 font-bold block mt-1 hover:underline">
+                                  👉 Click to track on Google Maps
+                                </span>
+                              </button>
+                            );
+                          }
+                          
+                          return (
+                            <span className="text-[12px] font-medium text-slate-400 mt-0.5 block">
+                              {driverName} location unavailable
+                            </span>
+                          );
+                        })()}
                       </div>
                     )}
 
@@ -325,12 +417,12 @@ export const AdminOrders = () => {
                   <div className="bg-slate-900 rounded-xl p-5 text-white space-y-3 shadow-xl">
                     <div className="flex justify-between items-center">
                       <span className="text-[11px] text-slate-400 font-medium">Service Fee</span>
-                      <span className="text-sm font-bold">{formatCurrency(selectedOrder.deliveryFee)}</span>
+                      <span className="text-sm font-bold">{formatCurrency(selectedOrder.deliveryFee, getOrderCurrency(selectedOrder))}</span>
                     </div>
                     {selectedOrder.codAmount > 0 && (
                       <div className="flex justify-between items-center border-t border-slate-800 pt-3">
                         <span className="text-[11px] text-slate-400 font-medium">Cash to Collect (COD)</span>
-                        <span className="text-sm font-bold text-emerald-400">{formatCurrency(selectedOrder.codAmount)}</span>
+                        <span className="text-sm font-bold text-emerald-400">{formatCurrency(selectedOrder.codAmount, getOrderCurrency(selectedOrder))}</span>
                       </div>
                     )}
                   </div>
@@ -401,14 +493,14 @@ export const AdminOrders = () => {
             <div className="px-8 py-5 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
               <button
                 onClick={async () => {
-                  if (confirm('Permanently delete this order?')) {
-                    await deleteOrder(selectedOrder.id);
+                  if (confirm('Cancel this order?')) {
+                    await cancelOrder(selectedOrder.id);
                     setSelectedOrder(null);
                   }
                 }}
                 className="text-rose-600 font-bold text-xs hover:underline"
               >
-                Delete Order
+                Cancel Order
               </button>
               <div className="flex gap-3">
                 <select
@@ -470,7 +562,8 @@ export const AdminOrders = () => {
                     state: 'NY',
                     zip: formData.get('deliveryZip')
                   },
-                  deliveryFee: deliveryFee
+                  deliveryFee: deliveryFee,
+                  currency: currentUser?.currency || 'SAR'
                 });
                 setIsCreating(false);
               }}
@@ -504,11 +597,11 @@ export const AdminOrders = () => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase">Value (SAR)</label>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase">Value ({currentUser?.currency || 'SAR'})</label>
                   <input name="orderValue" type="number" defaultValue="0" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase">COD (SAR)</label>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase">COD ({currentUser?.currency || 'SAR'})</label>
                   <input name="codAmount" type="number" defaultValue="0" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500" />
                 </div>
               </div>

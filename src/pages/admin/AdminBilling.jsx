@@ -143,7 +143,7 @@ export const AdminBilling = () => {
           <div className="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group">
             <div className="absolute right-0 top-0 w-24 h-24 bg-rose-50 rounded-full -mr-12 -mt-12 transition-transform group-hover:scale-110" />
             <p className="text-xs font-bold text-slate-400 uppercase mb-1 relative z-10">Outstanding Balance</p>
-            <h3 className="text-3xl font-bold text-rose-600 relative z-10">{formatCurrency(totalOutstanding)}</h3>
+            <h3 className="text-3xl font-bold text-rose-600 relative z-10">{formatCurrency(totalOutstanding, displayInvoices[0]?.currency || currentUser?.currency)}</h3>
             <div className="mt-4 flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase relative z-10">
               <Clock size={12} />
               <span>Pending Settlement</span>
@@ -155,7 +155,7 @@ export const AdminBilling = () => {
               <div className="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group">
                 <div className="absolute right-0 top-0 w-24 h-24 bg-indigo-50 rounded-full -mr-12 -mt-12 transition-transform group-hover:scale-110" />
                 <p className="text-xs font-bold text-slate-400 uppercase mb-1 relative z-10">Monthly Logi Revenue</p>
-                <h3 className="text-3xl font-bold text-slate-900 relative z-10">{formatCurrency(12450)}</h3>
+                <h3 className="text-3xl font-bold text-slate-900 relative z-10">{formatCurrency(12450, currentUser?.currency)}</h3>
                 <p className="mt-4 text-[10px] text-emerald-600 font-bold uppercase relative z-10 italic">Growing +18.4% since last month</p>
               </div>
               <div className="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group">
@@ -269,8 +269,8 @@ export const AdminBilling = () => {
                       <p className="text-[10px] font-medium text-slate-400 italic">Net 15 Terms</p>
                     </td>
                     <td className="px-8 py-5">
-                      <p className="text-xs font-bold text-slate-900">{formatCurrency(inv.amount)}</p>
-                      <p className="text-[10px] text-rose-500 font-bold uppercase mt-0.5">{inv.outstandingBalance > 0 ? `${formatCurrency(inv.outstandingBalance)} Unpaid` : 'Fully Settled'}</p>
+                      <p className="text-xs font-bold text-slate-900">{formatCurrency(inv.amount, inv.currency)}</p>
+                      <p className="text-[10px] text-rose-500 font-bold uppercase mt-0.5">{inv.outstandingBalance > 0 ? `${formatCurrency(inv.outstandingBalance, inv.currency)} Unpaid` : 'Fully Settled'}</p>
                     </td>
                     <td className="px-8 py-5"><StatusBadge status={inv.status} /></td>
                     <td className="px-8 py-5 text-xs font-bold text-slate-500">{formatDate(inv.dueDate)}</td>
@@ -397,7 +397,7 @@ export const AdminBilling = () => {
                                 <p className="text-[10px] text-slate-400 font-medium">{formatDate(order.created_at)} • {order.customer_name}</p>
                               </div>
                             </div>
-                            <p className="text-xs font-bold text-slate-900">{formatCurrency(order.cod_amount)}</p>
+                            <p className="text-xs font-bold text-slate-900">{formatCurrency(order.cod_amount, order.currency)}</p>
                           </div>
                         ))}
                       </div>

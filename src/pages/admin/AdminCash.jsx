@@ -7,7 +7,7 @@ import { formatCurrency, formatDate } from '../../lib/utils';
 import { cn } from '../../lib/utils';
 
 export const AdminCash = () => {
-  const { drivers, settlements, settleDriverCash, showToast } = useLogistics();
+  const { drivers, settlements, settleDriverCash, showToast, currentUser } = useLogistics();
 
   const totalCashInHand = drivers?.reduce((sum, d) => sum + Math.max(0, Number(d.cashInHand) || 0), 0) || 0;
   const totalSettledToday = (settlements || []).reduce((sum, s) => sum + Math.max(0, Number(s.amount) || 0), 0) || 0;
@@ -22,6 +22,7 @@ export const AdminCash = () => {
           value={totalCashInHand} 
           icon={Wallet} 
           isCurrency 
+          currencyCode={drivers[0]?.currency || currentUser?.currency}
           className="border-amber-200 bg-amber-50 shadow-sm transition-all"
         />
         <KPICard 
@@ -29,6 +30,7 @@ export const AdminCash = () => {
           value={totalSettledToday} 
           icon={ArrowDownCircle} 
           isCurrency 
+          currencyCode={settlements[0]?.currency || currentUser?.currency}
           className="border-emerald-200 bg-emerald-50 shadow-sm transition-all"
         />
       </div>
@@ -64,7 +66,7 @@ export const AdminCash = () => {
                       "text-sm font-bold",
                       log.status === 'pending' ? "text-amber-600" : "text-emerald-600"
                     )}>
-                      +{formatCurrency(log.amount)}
+                      +{formatCurrency(log.amount, log.currency)}
                     </p>
                     <span className={cn(
                       "text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border",
@@ -111,16 +113,16 @@ export const AdminCash = () => {
                 </div>
                 <div className="text-right flex items-center gap-6">
                   <div>
-                    <p className="text-base font-bold text-amber-600">{formatCurrency(driver.cashInHand)}</p>
+                    <p className="text-base font-bold text-amber-600">{formatCurrency(driver.cashInHand, driver.currency)}</p>
                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">In Hand</p>
                   </div>
                   <button 
                     className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-lg shadow-indigo-100 hover:bg-slate-900 transition-all active:scale-95 disabled:opacity-50"
                     onClick={async () => {
-                      if (confirm(`Collect ${formatCurrency(driver.cashInHand)} from ${driver.name}?`)) {
+                      if (confirm(`Collect ${formatCurrency(driver.cashInHand, driver.currency)} from ${driver.name}?`)) {
                         try {
                           await settleDriverCash(driver.id, driver.cashInHand);
-                          showToast(`Successfully collected ${formatCurrency(driver.cashInHand)} from ${driver.name}`);
+                          showToast(`Successfully collected ${formatCurrency(driver.cashInHand, driver.currency)} from ${driver.name}`);
                         } catch (err) {
                           showToast(err.message || 'Failed to settle cash', 'error');
                         }

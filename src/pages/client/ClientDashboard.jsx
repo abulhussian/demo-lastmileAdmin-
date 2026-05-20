@@ -37,12 +37,14 @@ export const ClientDashboard = () => {
           value={totalSpent} 
           icon={DollarSign} 
           isCurrency
+          currencyCode={currentUser?.currency}
         />
         <KPICard 
           title="Outstanding Balance" 
           value={outstanding} 
           icon={Clock} 
           isCurrency
+          currencyCode={currentUser?.currency}
           className={cn(outstanding > 0 ? "border-rose-100 bg-rose-50/20 text-rose-700" : "")}
         />
       </div>

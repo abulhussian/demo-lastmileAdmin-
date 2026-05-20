@@ -40,6 +40,7 @@ export const LogisticsProvider = ({ children }) => {
       orderValue: Number(o.order_value) || 0,
       codAmount: Number(o.cod_amount) || 0,
       deliveryFee: Number(o.delivery_fee) || 0,
+      currency: o.currency || null,
       createdAt: o.created_at,
       updatedAt: o.updated_at,
       customerName: o.customer_name,
@@ -72,6 +73,7 @@ export const LogisticsProvider = ({ children }) => {
       phone: u.phone || u.mobile_number || u.contact_number || u.phone_number || u.company_details?.phone,
       active: !!u.active,
       rating: u.rating,
+      currency: u.currency || 'SAR',
       companyDetails: u.company_details ? {
         companyName: u.company_details.companyName,
         billingEmail: u.company_details.billingEmail,
@@ -120,6 +122,7 @@ export const LogisticsProvider = ({ children }) => {
       delivery_fee: o.deliveryFee,
       fee_type: o.feeType,
       fee_value: o.feeValue,
+      currency: o.currency || currentUser?.currency || 'SAR',
       customer_name: o.customerName,
       customer_phone: o.customerPhone,
       pickup_address: formatAddr(o.pickupAddress),
@@ -143,6 +146,7 @@ export const LogisticsProvider = ({ children }) => {
       role: role,
       active: !!u.active,
       phone: u.phone || "",
+      currency: u.currency || 'SAR',
       ...(role === 'driver' && {
         vehicle_number: u.vehicleNumber || "",
         vehicle_type: u.vehicleType || "Van",
@@ -173,6 +177,7 @@ export const LogisticsProvider = ({ children }) => {
     dueDate: inv.due_date,
     billingPeriod: inv.billing_period,
     extraCharges: Number(inv.extra_charges) || 0,
+    currency: inv.currency || 'SAR',
     createdAt: inv.created_at,
     updatedAt: inv.updated_at
   });
@@ -185,7 +190,8 @@ export const LogisticsProvider = ({ children }) => {
     driverName: s.driver_name,
     driverEmail: s.driver_email,
     adminName: s.admin_name,
-    driverId: s.driver_id // Adding this if it exists in the real response, otherwise we use driverName
+    driverId: s.driver_id, // Adding this if it exists in the real response, otherwise we use driverName
+    currency: s.currency || 'SAR'
   });
 
   const [revenueStats, setRevenueStats] = useState(null);
@@ -345,6 +351,17 @@ export const LogisticsProvider = ({ children }) => {
     }
   };
 
+  const cancelOrder = async (orderId) => {
+    try {
+      await api.patch(`/orders/${orderId}/cancel`, { orderId });
+      await fetchData();
+      showToast('Order cancelled successfully', 'success');
+    } catch (err) {
+      console.error('Failed to cancel order:', err);
+      showToast(err.message || 'Failed to cancel order', 'error');
+    }
+  };
+
   const settleDriverCash = async (driverId, amount) => {
     await api.post('/cashflow/settle-driver', { driverId, amount });
     await fetchData();
@@ -403,7 +420,7 @@ export const LogisticsProvider = ({ children }) => {
     <LogisticsContext.Provider value={{
       currentUser, users, drivers, orders, invoices, settlements, toast,
       revenueStats, fetchRevenueStats,
-      login, logout, updateOrderStatus, assignDriver, createOrder, deleteOrder,
+      login, logout, updateOrderStatus, assignDriver, createOrder, deleteOrder, cancelOrder,
       settleDriverCash, toggleUserStatus, addUser, updateUser, deleteUser,
       generateInvoices, markInvoicePaid, fetchData,
       forgotPassword, resetPassword,

@@ -35,15 +35,17 @@ export const ClientCreateOrder = () => {
     deliveryAddressFull: '',
     feeType: '',
     feeValue: '',
+    currency: 'SAR',
   });
 
-  // Auto-populate client fees
+  // Auto-populate client fees and currency
   React.useEffect(() => {
     if (currentUser?.role === 'CLIENT' && currentUser.companyDetails) {
       setFormData(prev => ({
         ...prev,
         feeType: currentUser.companyDetails.feeType || 'FIXED',
-        feeValue: currentUser.companyDetails.feeValue || 0
+        feeValue: currentUser.companyDetails.feeValue || 0,
+        currency: currentUser.currency || 'SAR'
       }));
     }
   }, [currentUser]);
@@ -100,7 +102,8 @@ export const ClientCreateOrder = () => {
         clientId: currentUser?.id,
         deliveryFee: deliveryFee,
         feeType: formData.feeType,
-        feeValue: Number(formData.feeValue || 0)
+        feeValue: Number(formData.feeValue || 0),
+        currency: formData.currency || 'SAR'
       });
       showToast('Logistics request submitted successfully');
       navigate('/client/orders');
@@ -318,7 +321,7 @@ export const ClientCreateOrder = () => {
                   <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Value & Settlement</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-indigo-50 rounded-xl border border-indigo-100">
                     <div className="space-y-1.5">
-                      <label className="text-sm font-semibold text-slate-700">Total Order Value (SAR)</label>
+                      <label className="text-sm font-semibold text-slate-700">Total Order Value ({formData.currency || 'SAR'})</label>
                       <input 
                         type="number"
                         required
@@ -331,7 +334,7 @@ export const ClientCreateOrder = () => {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-sm font-semibold text-slate-700">COD Amount to Collect (SAR)</label>
+                      <label className="text-sm font-semibold text-slate-700">COD Amount to Collect ({formData.currency || 'SAR'})</label>
                       <input 
                         type="number"
                         required
@@ -347,7 +350,7 @@ export const ClientCreateOrder = () => {
                     <div className="md:col-span-2 pt-4 border-t border-indigo-100 flex items-center justify-between">
                       <div>
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Calculated Delivery Fee</p>
-                        <p className="text-xl font-black text-indigo-600">{formatCurrency(calculateDeliveryFee())}</p>
+                        <p className="text-xl font-black text-indigo-600">{formatCurrency(calculateDeliveryFee(), formData.currency || currentUser?.currency)}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Model</p>
@@ -357,7 +360,7 @@ export const ClientCreateOrder = () => {
 
                     {/* Admin Fee Options */}
                     {currentUser?.role === 'ADMIN' && (
-                      <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-indigo-100/50 mt-2 animate-in fade-in slide-in-from-top-2">
+                      <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-indigo-100/50 mt-2 animate-in fade-in slide-in-from-top-2">
                         <div className="space-y-1.5">
                           <label className="text-sm font-bold text-indigo-600">Fee Type</label>
                           <select 
@@ -370,7 +373,7 @@ export const ClientCreateOrder = () => {
                           </select>
                         </div>
                         <div className="space-y-1.5">
-                          <label className="text-sm font-bold text-indigo-600">Fee Value {formData.feeType === 'PERCENTAGE' ? '(%)' : '(SAR)'}</label>
+                          <label className="text-sm font-bold text-indigo-600">Fee Value {formData.feeType === 'PERCENTAGE' ? '(%)' : `(${formData.currency || 'SAR'})`}</label>
                           <input 
                             type="number"
                             className="w-full px-4 py-2 bg-white border border-indigo-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20"
@@ -378,6 +381,24 @@ export const ClientCreateOrder = () => {
                             value={formData.feeValue}
                             onChange={e => setFormData({...formData, feeValue: e.target.value})}
                           />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-sm font-bold text-indigo-600">Currency</label>
+                          <select 
+                            className="w-full px-4 py-2 bg-white border border-indigo-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20"
+                            value={formData.currency}
+                            onChange={e => setFormData({...formData, currency: e.target.value})}
+                          >
+                            <option value="SAR">SAR (Saudi Riyal)</option>
+                            <option value="USD">USD (US Dollar)</option>
+                            <option value="AED">AED (UAE Dirham)</option>
+                            <option value="EUR">EUR (Euro)</option>
+                            <option value="EGP">EGP (Egyptian Pound)</option>
+                            <option value="KWD">KWD (Kuwaiti Dinar)</option>
+                            <option value="BHD">BHD (Bahraini Dinar)</option>
+                            <option value="QAR">QAR (Qatari Riyal)</option>
+                            <option value="OMR">OMR (Omani Rial)</option>
+                          </select>
                         </div>
                       </div>
                     )}

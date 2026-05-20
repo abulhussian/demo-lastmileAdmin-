@@ -283,7 +283,7 @@ const ClientProfile = () => {
                             </div>
                           </div>
                           <span className="text-lg font-bold text-indigo-600">
-                            {currentUser.companyDetails?.feeType === 'FIXED' ? formatCurrency(currentUser.companyDetails?.feeValue) : `${currentUser.companyDetails?.feeValue}%`}
+                            {currentUser.companyDetails?.feeType === 'FIXED' ? formatCurrency(currentUser.companyDetails?.feeValue, currentUser.currency) : `${currentUser.companyDetails?.feeValue}%`}
                           </span>
                         </div>
 

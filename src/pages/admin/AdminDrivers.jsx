@@ -193,7 +193,7 @@ export const AdminDrivers = () => {
                     "text-base font-bold",
                     driver.cashInHand > 0 ? "text-indigo-600" : "text-slate-400"
                   )}>
-                    {formatCurrency(driver.cashInHand)}
+                    {formatCurrency(driver.cashInHand, driver.currency)}
                   </p>
                 </div>
               </div>
@@ -214,10 +214,10 @@ export const AdminDrivers = () => {
                 <div className="flex items-center gap-3 pt-2">
                   <button
                     onClick={async () => {
-                      if (confirm(`Collect ${formatCurrency(driver.cashInHand)} from ${driver.name}?`)) {
+                      if (confirm(`Collect ${formatCurrency(driver.cashInHand, driver.currency)} from ${driver.name}?`)) {
                         try {
                           await settleDriverCash(driver.id, driver.cashInHand);
-                          showToast(`Successfully collected ${formatCurrency(driver.cashInHand)} from ${driver.name}`);
+                          showToast(`Successfully collected ${formatCurrency(driver.cashInHand, driver.currency)} from ${driver.name}`);
                         } catch (err) {
                           showToast(err.message || 'Failed to settle cash', 'error');
                         }
@@ -284,7 +284,7 @@ export const AdminDrivers = () => {
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-bold text-emerald-600">+{formatCurrency(log.amount)}</p>
+                        <p className="text-sm font-bold text-emerald-600">+{formatCurrency(log.amount, log.currency)}</p>
                         <span className="text-[10px] font-bold text-emerald-500/60 uppercase tracking-widest">{log.status}</span>
                       </div>
                     </div>

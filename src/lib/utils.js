@@ -15,10 +15,13 @@ export function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
 
-export function formatCurrency(amount) {
+export function formatCurrency(amount, currencyCode = 'SAR') {
+  const code = (typeof currencyCode === 'string' && currencyCode.trim().length === 3) 
+    ? currencyCode.trim().toUpperCase() 
+    : 'SAR';
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'SAR',
+    currency: code,
     minimumFractionDigits: 2
   }).format(amount);
 }

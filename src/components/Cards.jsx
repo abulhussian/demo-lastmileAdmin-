@@ -2,7 +2,7 @@ import React from 'react';
 import { cn, formatCurrency } from '../lib/utils';
 
 export const KPICard = ({ 
-  title, value, icon: Icon, trend, className, isCurrency 
+  title, value, icon: Icon, trend, className, isCurrency, currencyCode 
 }) => {
   return (
     <div className={cn("p-6 bg-white rounded-[16px] border border-slate-200 shadow-sm transition-all hover:scale-[1.01]", className)}>
@@ -10,7 +10,7 @@ export const KPICard = ({
         <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">{title}</p>
         <div className="flex items-center justify-between mt-2">
           <h3 className="text-2xl font-extrabold text-slate-900">
-            {isCurrency && typeof value === 'number' ? formatCurrency(value) : value}
+            {isCurrency && typeof value === 'number' ? formatCurrency(value, currencyCode) : value}
           </h3>
           <div className="p-2 bg-slate-50 rounded-lg text-slate-400">
             <Icon size={18} />
