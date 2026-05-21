@@ -18,13 +18,15 @@ import {
   Calendar,
   ArrowDownCircle,
   Eye,
-  EyeOff
+  EyeOff,
+  Download
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 export const AdminDrivers = () => {
   const { drivers, settleDriverCash, toggleUserStatus, addUser, showToast } = useLogistics();
   const [searchTerm, setSearchTerm] = useState('');
+  const [cashFilter, setCashFilter] = useState('ALL');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [historyDriver, setHistoryDriver] = useState(null);
@@ -47,9 +49,67 @@ export const AdminDrivers = () => {
   const filteredDrivers = drivers.filter(driver => {
     const name = driver.name || '';
     const vehicleNumber = driver.vehicleNumber || '';
-    return name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-           vehicleNumber.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          vehicleNumber.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    let matchesCash = true;
+    if (cashFilter === 'ZERO') {
+      matchesCash = (driver.cashInHand || 0) === 0;
+    } else if (cashFilter === 'PENDING') {
+      matchesCash = (driver.cashInHand || 0) > 0;
+    }
+    
+    return matchesSearch && matchesCash;
   });
+
+  const handleExport = () => {
+    const headers = [
+      'Driver ID',
+      'Name',
+      'Email',
+      'Phone',
+      'Vehicle Number',
+      'Vehicle Type',
+      'Status',
+      'Total Deliveries',
+      'Rating',
+      'Cash In Hand',
+      'Currency'
+    ];
+
+    const escapeCsv = (val) => {
+      if (val === undefined || val === null) return '""';
+      const str = String(val).replace(/"/g, '""');
+      return `"${str}"`;
+    };
+
+    const csvRows = [
+      headers.join(','),
+      ...filteredDrivers.map(driver => [
+        escapeCsv(driver.id),
+        escapeCsv(driver.name),
+        escapeCsv(driver.email),
+        escapeCsv(driver.phone),
+        escapeCsv(driver.vehicleNumber),
+        escapeCsv(driver.vehicleType),
+        escapeCsv(driver.active ? 'Active' : 'Inactive'),
+        driver.totalDeliveries || 0,
+        driver.rating || 0,
+        driver.cashInHand || 0,
+        escapeCsv(driver.currency || 'SAR')
+      ].join(','))
+    ];
+
+    const csvString = csvRows.join('\n');
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `drivers-export-${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const handleAddDriver = async (e) => {
     e.preventDefault();
@@ -121,23 +181,48 @@ export const AdminDrivers = () => {
       <div className="flex flex-col gap-6">
         {/* Header Actions */}
         <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input
-              type="text"
-              placeholder="Search drivers by name, vehicle ID..."
-              className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm font-medium"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+          <div className="flex items-center flex-wrap gap-3 flex-1">
+            <div className="relative flex-1 max-w-xs">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <input
+                id="driver-search-input"
+                type="text"
+                placeholder="Search drivers by name, vehicle ID..."
+                className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm font-medium"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <select
+              id="driver-cash-filter"
+              className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-slate-600 outline-none hover:bg-white cursor-pointer transition-all focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+              value={cashFilter}
+              onChange={(e) => setCashFilter(e.target.value)}
+            >
+              <option value="ALL">All Cash Statuses</option>
+              <option value="ZERO">0 Cash Drivers</option>
+              <option value="PENDING">Pending Cash</option>
+            </select>
           </div>
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-md active:scale-95"
-          >
-            <UserPlus size={18} />
-            Register Driver
-          </button>
+
+          <div className="flex items-center gap-2">
+            <button
+              id="driver-export-btn"
+              onClick={handleExport}
+              className="bg-white text-slate-700 border border-slate-200 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-slate-50 transition-all shadow-sm active:scale-95"
+            >
+              <Download size={18} />
+              Export
+            </button>
+            <button
+              id="driver-register-btn"
+              onClick={() => setIsModalOpen(true)}
+              className="bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-md active:scale-95"
+            >
+              <UserPlus size={18} />
+              Register Driver
+            </button>
+          </div>
         </div>
 
         {/* Driver Cards Grid */}

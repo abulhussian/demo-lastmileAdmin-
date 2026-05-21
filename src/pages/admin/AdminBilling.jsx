@@ -47,6 +47,9 @@ export const AdminBilling = () => {
 
   const totalOutstanding = displayInvoices.reduce((sum, inv) => sum + inv.outstandingBalance, 0);
 
+  const selectedOrders = uninvoicedOrders.filter(o => selectedOrderIds.includes(o.id));
+  const totalServiceFee = selectedOrders.reduce((sum, o) => sum + (Number(o.delivery_fee) || 0), 0);
+
   const handleGenerate = async () => {
     setFetchingClients(true);
     setIsModalOpen(true);
@@ -98,10 +101,11 @@ export const AdminBilling = () => {
     try {
       const { api } = await import('../../lib/api');
       const payload = {
+        clientId: selectedClient,
         orderIds: selectedOrderIds,
-        billing_period: billingPeriod,
-        due_date: new Date(dueDate).toISOString(),
-        extra_charges: Number(extraCharges)
+        billingPeriod: billingPeriod,
+        dueDate: new Date(dueDate).toISOString(),
+        extraCharges: Number(extraCharges)
       };
 
       await api.post('/billing/create-manual', payload);
@@ -124,15 +128,71 @@ export const AdminBilling = () => {
   };
 
   const handleDownload = (invoice) => {
-    const csvContent = "data:text/csv;charset=utf-8,"
-      + "Invoice ID,Client,Amount,Status,Due Date\n"
-      + `${invoice.id},${invoice.clientName},${invoice.amount},${invoice.status},${invoice.dueDate}`;
-    const encodedUri = encodeURI(csvContent);
+    const htmlContent = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" 
+            xmlns:x="urn:schemas-microsoft-com:office:excel" 
+            xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <meta http-equiv="content-type" content="text/plain; charset=UTF-8"/>
+        <!--[if gte mso 9]>
+        <xml>
+          <x:ExcelWorkbook>
+            <x:ExcelWorksheets>
+              <x:ExcelWorksheet>
+                <x:Name>Invoice ${invoice.id}</x:Name>
+                <x:WorksheetOptions>
+                  <x:DisplayGridlines/>
+                </x:WorksheetOptions>
+              </x:ExcelWorksheet>
+            </x:ExcelWorksheets>
+          </x:ExcelWorkbook>
+        </xml>
+        <![endif]-->
+        <style>
+          table { border-collapse: collapse; width: 100%; font-family: sans-serif; }
+          th { background-color: #4F46E5; color: white; font-weight: bold; }
+          th, td { border: 1px solid #E2E8F0; padding: 10px; text-align: left; font-size: 13px; }
+          .title { font-size: 18px; font-weight: bold; margin-bottom: 15px; color: #1E293B; }
+        </style>
+      </head>
+      <body>
+        <div class="title">LogiFlow Invoice Details</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Invoice ID</th>
+              <th>Client Name</th>
+              <th>Billing Period</th>
+              <th>Amount</th>
+              <th>Extra Charges</th>
+              <th>Status</th>
+              <th>Due Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>${invoice.id}</td>
+              <td>${invoice.clientName}</td>
+              <td>${invoice.billingPeriod || 'N/A'}</td>
+              <td>${formatCurrency(invoice.amount, invoice.currency)}</td>
+              <td>${formatCurrency(invoice.extraCharges || 0, invoice.currency)}</td>
+              <td>${invoice.status}</td>
+              <td>${invoice.dueDate ? formatDate(invoice.dueDate) : 'N/A'}</td>
+            </tr>
+          </tbody>
+        </table>
+      </body>
+      </html>
+    `;
+
+    const blob = new Blob([htmlContent], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `invoice-${invoice.id}.csv`);
+    link.href = url;
+    link.setAttribute("download", `invoice-${invoice.id}.xls`);
     document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -292,7 +352,7 @@ export const AdminBilling = () => {
                         <button
                           onClick={() => handleDownload(inv)}
                           className="p-2 text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors border border-transparent hover:border-indigo-100"
-                          title="Download CSV"
+                          title="Download Excel"
                         >
                           <Download size={18} />
                         </button>
@@ -393,15 +453,56 @@ export const AdminBilling = () => {
                                 {selectedOrderIds.includes(order.id) && <FileText size={12} />}
                               </div>
                               <div>
-                                <p className="text-xs font-bold text-slate-900">#{order.tracking_id}</p>
+                                <div className="flex items-center gap-2">
+                                  <p className="text-xs font-bold text-slate-900">#{order.tracking_id}</p>
+                                  <span className={cn(
+                                    "px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider border",
+                                    order.status?.toUpperCase() === 'CANCELLED' || order.status?.toUpperCase() === 'CANCEL'
+                                      ? "bg-rose-50 text-rose-600 border-rose-100"
+                                      : "bg-emerald-50 text-emerald-600 border-emerald-100"
+                                  )}>
+                                    {order.status || 'DELIVERED'}
+                                  </span>
+                                </div>
                                 <p className="text-[10px] text-slate-400 font-medium">{formatDate(order.created_at)} • {order.customer_name}</p>
                               </div>
                             </div>
-                            <p className="text-xs font-bold text-slate-900">{formatCurrency(order.cod_amount, order.currency)}</p>
+                            <div className="text-right">
+                              <p className="text-xs font-bold text-slate-900">{formatCurrency(order.cod_amount, order.currency)}</p>
+                              <p className="text-[10px] text-slate-400 font-medium italic mt-0.5">Fee: {formatCurrency(order.delivery_fee, order.currency)}</p>
+                            </div>
                           </div>
                         ))}
                       </div>
                     )}
+                  </div>
+                )}
+
+                {/* Invoice Summary & Calculation Breakdown */}
+                {selectedOrderIds.length > 0 && (
+                  <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200/60 space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Invoice Calculation Summary</h4>
+                    <div className="space-y-2.5">
+                      <div className="flex justify-between text-xs font-medium text-slate-600">
+                        <span>Selected Orders ({selectedOrderIds.length}) Service Fee Sum</span>
+                        <span>{formatCurrency(totalServiceFee, uninvoicedOrders[0]?.currency || 'SAR')}</span>
+                      </div>
+                      <div className="flex justify-between text-xs font-medium text-slate-600">
+                        <span>Extra Service Charges</span>
+                        <span>{formatCurrency(Number(extraCharges) || 0, uninvoicedOrders[0]?.currency || 'SAR')}</span>
+                      </div>
+                      <div className="pt-2.5 border-t border-slate-200 flex justify-between text-sm font-bold text-slate-900">
+                        <span>Total Invoice Amount</span>
+                        <span className="text-indigo-600 font-extrabold">
+                          {formatCurrency(totalServiceFee + (Number(extraCharges) || 0), uninvoicedOrders[0]?.currency || 'SAR')}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="p-3 bg-white rounded-xl border border-slate-100 text-[10px] text-slate-500 leading-relaxed">
+                      <span className="font-bold text-slate-700 block mb-1">How is this calculated?</span>
+                      Total Invoice Amount = (Sum of Service Fees of all selected orders) + Extra Service Charges.<br />
+                      In this case: <span className="font-semibold">{formatCurrency(totalServiceFee, uninvoicedOrders[0]?.currency || 'SAR')}</span> (from {selectedOrderIds.length} orders) + <span className="font-semibold">{formatCurrency(Number(extraCharges) || 0, uninvoicedOrders[0]?.currency || 'SAR')}</span> (extra charges) = <span className="font-bold text-indigo-600">{formatCurrency(totalServiceFee + (Number(extraCharges) || 0), uninvoicedOrders[0]?.currency || 'SAR')}</span>.
+                    </div>
                   </div>
                 )}
 
@@ -434,7 +535,7 @@ export const AdminBilling = () => {
                           type="number"
                           value={extraCharges}
                           onChange={(e) => setExtraCharges(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-6 py-3.5 text-sm font-bold text-slate-900 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-16 pr-6 py-3.5 text-sm font-bold text-slate-900 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all"
                         />
                       </div>
                     </div>
