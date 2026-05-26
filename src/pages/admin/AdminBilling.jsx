@@ -6,8 +6,12 @@ import { formatCurrency, formatDate, cn } from '../../lib/utils';
 import { FileText, Download, Filter, MoreVertical, CreditCard, Clock } from 'lucide-react';
 
 export const AdminBilling = () => {
-  const { invoices, generateInvoices, markInvoicePaid, currentUser, fetchData } = useLogistics();
+  const { invoices, generateInvoices, markInvoicePaid, currentUser, fetchInvoices } = useLogistics();
   const [isGenerating, setIsGenerating] = useState(false);
+
+  React.useEffect(() => {
+    fetchInvoices();
+  }, [fetchInvoices]);
 
   // Manual Batch States
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -109,7 +113,7 @@ export const AdminBilling = () => {
       };
 
       await api.post('/billing/create-manual', payload);
-      await fetchData(); // Refresh table
+      await fetchInvoices(); // Refresh table
       setIsModalOpen(false);
       resetModal();
     } catch (err) {

@@ -9,7 +9,12 @@ import { Link } from 'react-router-dom';
 const cn = (...inputs) => inputs.filter(Boolean).join(' ');
 
 export const ClientDashboard = () => {
-  const { orders, invoices, currentUser } = useLogistics();
+  const { orders, invoices, currentUser, fetchOrders, fetchInvoices } = useLogistics();
+
+  React.useEffect(() => {
+    fetchOrders();
+    fetchInvoices();
+  }, [fetchOrders, fetchInvoices]);
   
   const clientOrders = orders.filter(o => o.clientId === currentUser?.id);
   const clientInvoices = invoices.filter(i => i.clientId === currentUser?.id);

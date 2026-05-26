@@ -18,8 +18,19 @@ const OrderStatus = {
 };
 
 export const AdminOrders = () => {
-  const { orders, drivers, users, updateOrderStatus, assignDriver, createOrder, deleteOrder, cancelOrder, currentUser, bulkCreateOrders } = useLogistics();
+  const { 
+    orders, drivers, users, updateOrderStatus, assignDriver, createOrder, deleteOrder, 
+    cancelOrder, currentUser, bulkCreateOrders, fetchOrders, fetchDrivers, fetchUsers 
+  } = useLogistics();
   const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    fetchOrders();
+    if (currentUser?.role === 'ADMIN') {
+      fetchDrivers();
+      fetchUsers();
+    }
+  }, [currentUser, fetchOrders, fetchDrivers, fetchUsers]);
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showAssignForm, setShowAssignForm] = useState(false);

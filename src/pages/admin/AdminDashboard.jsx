@@ -35,8 +35,14 @@ const chartData = [
 
 export const AdminDashboard = () => {
   const navigate = useNavigate();
-  const { orders, drivers, revenueStats, fetchRevenueStats } = useLogistics();
+  const { orders, drivers, revenueStats, fetchRevenueStats, fetchOrders, fetchDrivers } = useLogistics();
   const [period, setPeriod] = React.useState('weekly');
+
+  React.useEffect(() => {
+    fetchOrders();
+    fetchDrivers();
+    fetchRevenueStats();
+  }, [fetchOrders, fetchDrivers, fetchRevenueStats]);
 
   const stats = revenueStats?.revenue_stats;
   const totalOrders = stats?.total_orders || orders.length;

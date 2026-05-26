@@ -205,58 +205,95 @@ export const LogisticsProvider = ({ children }) => {
     }
   }, []);
 
-  const fetchData = useCallback(async () => {
+  const fetchOrders = useCallback(async () => {
     if (!currentUser) return;
-    const isAdmin = currentUser.role === 'ADMIN';
-
     try {
-      const ordersResponse = await api.get('/orders');
-      setOrders((ordersResponse.data || []).map(mapOrder));
+      const response = await api.get('/orders');
+      setOrders((response.data || []).map(mapOrder));
+    } catch (err) {
+      console.error('Failed to fetch orders:', err);
+    }
+  }, [currentUser]);
 
-      if (isAdmin) {
-        fetchRevenueStats(); // Initial fetch for admin
-        try {
-          const usersResponse = await api.get('/users');
-          setUsers((usersResponse.data || [])
-            .filter((u) => u.role?.toUpperCase() !== 'DRIVER')
-            .map(mapUser)
-          );
+  const fetchUsers = useCallback(async () => {
+    if (!currentUser || currentUser.role !== 'ADMIN') return;
+    try {
+      const response = await api.get('/users');
+      setUsers((response.data || [])
+        .filter((u) => u.role?.toUpperCase() !== 'DRIVER')
+        .map(mapUser)
+      );
+    } catch (err) {
+      console.error('Failed to fetch users:', err);
+    }
+  }, [currentUser]);
 
-          const driversResponse = await api.get('/users/drivers');
-          setDrivers((driversResponse.data || []).map(mapDriver));
+  const fetchDrivers = useCallback(async () => {
+    if (!currentUser || currentUser.role !== 'ADMIN') return;
+    try {
+      const response = await api.get('/users/drivers');
+      setDrivers((response.data || []).map(mapDriver));
+    } catch (err) {
+      console.error('Failed to fetch drivers:', err);
+    }
+  }, [currentUser]);
 
-          const allInvoicesResponse = await api.get('/billing');
-          setInvoices((allInvoicesResponse.data || []).map(mapInvoice));
-
-          const settlementsResponse = await api.get('/cashflow/settlements');
-          setSettlements((settlementsResponse.data || []).map(mapSettlement));
-        } catch (adminErr) {
-          console.error('Admin data fetch failed:', adminErr);
-        }
-      }
-
-      if (currentUser.role === 'CLIENT') {
-        const billingResponse = await api.get('/billing/my-invoices');
-        setInvoices((billingResponse.data || []).map(mapInvoice));
+  const fetchInvoices = useCallback(async () => {
+    if (!currentUser) return;
+    try {
+      if (currentUser.role === 'ADMIN') {
+        const response = await api.get('/billing');
+        setInvoices((response.data || []).map(mapInvoice));
+      } else if (currentUser.role === 'CLIENT') {
+        const response = await api.get('/billing/my-invoices');
+        setInvoices((response.data || []).map(mapInvoice));
       }
     } catch (err) {
-      console.error('Failed to fetch data:', err);
+      console.error('Failed to fetch invoices:', err);
     }
-  }, [currentUser?.id, currentUser?.role, fetchRevenueStats]);
+  }, [currentUser]);
+
+  const fetchSettlements = useCallback(async () => {
+    if (!currentUser || currentUser.role !== 'ADMIN') return;
+    try {
+      const response = await api.get('/cashflow/settlements');
+      setSettlements((response.data || []).map(mapSettlement));
+    } catch (err) {
+      console.error('Failed to fetch settlements:', err);
+    }
+  }, [currentUser]);
+
+  const fetchData = useCallback(async () => {
+    if (!currentUser) return;
+    fetchOrders();
+    if (currentUser.role === 'ADMIN') {
+      fetchRevenueStats();
+      fetchUsers();
+      fetchDrivers();
+      fetchInvoices();
+      fetchSettlements();
+    } else if (currentUser.role === 'CLIENT') {
+      fetchInvoices();
+    }
+  }, [currentUser, fetchOrders, fetchRevenueStats, fetchUsers, fetchDrivers, fetchInvoices, fetchSettlements]);
 
   useEffect(() => {
     const refreshUser = async () => {
       const saved = localStorage.getItem('logiflow_user');
-      const token = saved ? JSON.parse(saved).token : null;
-
-      if (token) {
+      if (saved) {
         try {
-          const response = await api.get('/auth/me');
-          const userData = response.data || response;
-          if (userData) {
-            const updatedUser = { ...mapUser(userData), token };
-            setCurrentUser(updatedUser);
-            localStorage.setItem('logiflow_user', JSON.stringify(updatedUser));
+          const savedObj = JSON.parse(saved);
+          const token = savedObj.token;
+          const refreshToken = savedObj.refreshToken;
+
+          if (token) {
+            const response = await api.get('/auth/me');
+            const userData = response.data || response;
+            if (userData) {
+              const updatedUser = { ...mapUser(userData), token, refreshToken };
+              setCurrentUser(updatedUser);
+              localStorage.setItem('logiflow_user', JSON.stringify(updatedUser));
+            }
           }
         } catch (err) {
           console.error('Failed to refresh user profile:', err);
@@ -266,27 +303,22 @@ export const LogisticsProvider = ({ children }) => {
     refreshUser();
   }, []);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
   const login = async (email, password) => {
     const response = await api.post('/auth/login', { email, password });
-    const { token, user } = response.data || response;
+    const { token, refreshToken, user } = response.data || response;
 
-    
     // Set token in localStorage first so subsequent calls have it
-    localStorage.setItem('logiflow_user', JSON.stringify({ token, ...mapUser(user) }));
+    localStorage.setItem('logiflow_user', JSON.stringify({ token, refreshToken, ...mapUser(user) }));
     
     // Immediately fetch full profile details
     try {
       const profileResponse = await api.get('/auth/me');
-      const fullUser = { ...mapUser(profileResponse.data || profileResponse), token };
+      const fullUser = { ...mapUser(profileResponse.data || profileResponse), token, refreshToken };
       setCurrentUser(fullUser);
       localStorage.setItem('logiflow_user', JSON.stringify(fullUser));
     } catch (err) {
       // Fallback to login response if /me fails
-      const userWithToken = { ...mapUser(user), token };
+      const userWithToken = { ...mapUser(user), token, refreshToken };
       setCurrentUser(userWithToken);
     }
   };
@@ -303,10 +335,10 @@ export const LogisticsProvider = ({ children }) => {
     try {
       const apiStatus = status.toLowerCase().replace(/_/g, '-');
       await api.patch(`/orders/${orderId}/status`, { status: apiStatus });
-      // Optional: silent refresh in background
-      fetchData(); 
+      // Silent refresh of orders
+      fetchOrders(); 
     } catch (err) {
-      await fetchData(); // Rollback/Sync on error
+      await fetchOrders(); // Rollback/Sync on error
       throw err;
     }
   };
@@ -321,29 +353,29 @@ export const LogisticsProvider = ({ children }) => {
 
     try {
       await api.patch(`/orders/${orderId}/assign`, { driver_id: driverId });
-      fetchData(); // background refresh
+      fetchOrders(); // background refresh
     } catch (err) {
-      await fetchData(); // Rollback/Sync on error
+      await fetchOrders(); // Rollback/Sync on error
       throw err;
     }
   };
 
   const createOrder = async (newOrder) => {
     await api.post('/orders', orderToApi(newOrder));
-    await fetchData();
+    await fetchOrders();
   };
 
   const bulkCreateOrders = async (file) => {
     const formData = new FormData();
     formData.append('file', file);
     await api.post('/orders/bulk', formData);
-    await fetchData();
+    await fetchOrders();
   };
 
   const deleteOrder = async (orderId) => {
     try {
       await api.delete(`/orders/${orderId}`);
-      await fetchData();
+      await fetchOrders();
       showToast('Order deleted successfully', 'success');
     } catch (err) {
       console.error('Failed to delete order:', err);
@@ -354,7 +386,7 @@ export const LogisticsProvider = ({ children }) => {
   const cancelOrder = async (orderId) => {
     try {
       await api.patch(`/orders/${orderId}/cancel`, { orderId });
-      await fetchData();
+      await fetchOrders();
       showToast('Order cancelled successfully', 'success');
     } catch (err) {
       console.error('Failed to cancel order:', err);
@@ -364,38 +396,42 @@ export const LogisticsProvider = ({ children }) => {
 
   const settleDriverCash = async (driverId, amount) => {
     await api.post('/cashflow/settle-driver', { driverId, amount });
-    await fetchData();
+    await fetchSettlements();
+    await fetchDrivers();
   };
 
   const toggleUserStatus = async (userId, currentStatus) => {
     await api.put(`/users/drivers/${userId}/status`, { active: !currentStatus });
-    await fetchData();
+    await fetchDrivers();
   };
 
   const addUser = async (userData) => {
     await api.post('/auth/register', userToApi(userData));
-    await fetchData();
+    await fetchUsers();
+    await fetchDrivers();
   };
 
   const deleteUser = async (userId) => {
     await api.delete(`/users/${userId}`);
-    await fetchData();
+    await fetchUsers();
+    await fetchDrivers();
   };
 
   const updateUser = async (userId, userData) => {
     await api.put(`/users/${userId}`, userToApi(userData));
-    await fetchData();
+    await fetchUsers();
+    await fetchDrivers();
   };
 
   const generateInvoices = async () => {
     await api.post('/billing/generate', {});
-    await fetchData();
+    await fetchInvoices();
   };
 
   const markInvoicePaid = async (invoiceId) => {
     try {
       await api.patch(`/billing/${invoiceId}/paid`, {});
-      await fetchData();
+      await fetchInvoices();
       showToast('Invoice marked as paid', 'success');
     } catch (err) {
       console.error('Failed to mark invoice as paid:', err);
@@ -420,6 +456,7 @@ export const LogisticsProvider = ({ children }) => {
     <LogisticsContext.Provider value={{
       currentUser, users, drivers, orders, invoices, settlements, toast,
       revenueStats, fetchRevenueStats,
+      fetchOrders, fetchUsers, fetchDrivers, fetchInvoices, fetchSettlements,
       login, logout, updateOrderStatus, assignDriver, createOrder, deleteOrder, cancelOrder,
       settleDriverCash, toggleUserStatus, addUser, updateUser, deleteUser,
       generateInvoices, markInvoicePaid, fetchData,

@@ -7,7 +7,12 @@ import { formatCurrency, formatDate } from '../../lib/utils';
 import { cn } from '../../lib/utils';
 
 export const AdminCash = () => {
-  const { drivers, settlements, settleDriverCash, showToast, currentUser } = useLogistics();
+  const { drivers, settlements, settleDriverCash, showToast, currentUser, fetchDrivers, fetchSettlements } = useLogistics();
+
+  React.useEffect(() => {
+    fetchDrivers();
+    fetchSettlements();
+  }, [fetchDrivers, fetchSettlements]);
 
   const totalCashInHand = drivers?.reduce((sum, d) => sum + Math.max(0, Number(d.cashInHand) || 0), 0) || 0;
   const totalSettledToday = (settlements || []).reduce((sum, s) => sum + Math.max(0, Number(s.amount) || 0), 0) || 0;

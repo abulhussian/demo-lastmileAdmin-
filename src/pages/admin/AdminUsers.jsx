@@ -9,7 +9,12 @@ import { ConfirmationModal } from '../../components/ConfirmationModal';
 
 
 const AdminUsers = () => {
-  const { users, drivers, addUser, updateUser, deleteUser, toggleUserStatus, showToast } = useLogistics();
+  const { users, drivers, addUser, updateUser, deleteUser, toggleUserStatus, showToast, fetchUsers, fetchDrivers } = useLogistics();
+
+  React.useEffect(() => {
+    fetchUsers();
+    fetchDrivers();
+  }, [fetchUsers, fetchDrivers]);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('ALL');
   const [isModalOpen, setIsModalOpen] = useState(false);

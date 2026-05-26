@@ -24,8 +24,12 @@ import {
 import { cn } from '../../lib/utils';
 
 export const AdminDrivers = () => {
-  const { drivers, settleDriverCash, toggleUserStatus, addUser, showToast } = useLogistics();
+  const { drivers, settleDriverCash, toggleUserStatus, addUser, showToast, fetchDrivers } = useLogistics();
   const [searchTerm, setSearchTerm] = useState('');
+
+  React.useEffect(() => {
+    fetchDrivers();
+  }, [fetchDrivers]);
   const [cashFilter, setCashFilter] = useState('ALL');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
