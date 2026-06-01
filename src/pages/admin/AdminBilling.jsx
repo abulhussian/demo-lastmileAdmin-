@@ -51,6 +51,37 @@ export const AdminBilling = () => {
 
   const totalOutstanding = displayInvoices.reduce((sum, inv) => sum + inv.outstandingBalance, 0);
 
+  const monthlyRevenue = displayInvoices.reduce((sum, inv) => sum + inv.amount, 0);
+
+  const collectionRate = monthlyRevenue > 0 
+    ? ((monthlyRevenue - totalOutstanding) / monthlyRevenue) * 100 
+    : 100.0;
+
+  const currentMonthStr = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
+  const lastMonthDate = new Date();
+  lastMonthDate.setMonth(lastMonthDate.getMonth() - 1);
+  const lastMonthStr = lastMonthDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+  
+  const currentMonthRevenue = displayInvoices
+    .filter(inv => inv.billingPeriod === currentMonthStr)
+    .reduce((sum, inv) => sum + inv.amount, 0);
+
+  const lastMonthRevenue = displayInvoices
+    .filter(inv => inv.billingPeriod === lastMonthStr)
+    .reduce((sum, inv) => sum + inv.amount, 0);
+
+  let trendText = 'Stable since last month';
+  let trendColor = 'text-slate-400';
+  if (lastMonthRevenue > 0) {
+    const changePercent = ((currentMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100;
+    const sign = changePercent >= 0 ? '+' : '';
+    trendText = `${changePercent >= 0 ? 'Growing' : 'Declining'} ${sign}${changePercent.toFixed(1)}% since last month`;
+    trendColor = changePercent >= 0 ? 'text-emerald-600' : 'text-rose-600';
+  } else if (currentMonthRevenue > 0) {
+    trendText = 'Growing (new billing period)';
+    trendColor = 'text-emerald-600';
+  }
+
   const selectedOrders = uninvoicedOrders.filter(o => selectedOrderIds.includes(o.id));
   const totalServiceFee = selectedOrders.reduce((sum, o) => sum + (Number(o.delivery_fee) || 0), 0);
 
@@ -105,11 +136,11 @@ export const AdminBilling = () => {
     try {
       const { api } = await import('../../lib/api');
       const payload = {
-        clientId: selectedClient,
+        client_id: selectedClient,
         orderIds: selectedOrderIds,
-        billingPeriod: billingPeriod,
-        dueDate: new Date(dueDate).toISOString(),
-        extraCharges: Number(extraCharges)
+        billing_period: billingPeriod,
+        due_date: new Date(dueDate).toISOString(),
+        extra_charges: Number(extraCharges)
       };
 
       await api.post('/billing/create-manual', payload);
@@ -219,15 +250,15 @@ export const AdminBilling = () => {
               <div className="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group">
                 <div className="absolute right-0 top-0 w-24 h-24 bg-indigo-50 rounded-full -mr-12 -mt-12 transition-transform group-hover:scale-110" />
                 <p className="text-xs font-bold text-slate-400 uppercase mb-1 relative z-10">Monthly Logi Revenue</p>
-                <h3 className="text-3xl font-bold text-slate-900 relative z-10">{formatCurrency(12450, currentUser?.currency)}</h3>
-                <p className="mt-4 text-[10px] text-emerald-600 font-bold uppercase relative z-10 italic">Growing +18.4% since last month</p>
+                <h3 className="text-3xl font-bold text-slate-900 relative z-10">{formatCurrency(monthlyRevenue, displayInvoices[0]?.currency || currentUser?.currency)}</h3>
+                <p className={cn("mt-4 text-[10px] font-bold uppercase relative z-10 italic", trendColor)}>{trendText}</p>
               </div>
               <div className="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group">
                 <div className="absolute right-0 top-0 w-24 h-24 bg-emerald-50 rounded-full -mr-12 -mt-12 transition-transform group-hover:scale-110" />
                 <p className="text-xs font-bold text-slate-400 uppercase mb-1 relative z-10">Collection Rate</p>
-                <h3 className="text-3xl font-bold text-slate-900 relative z-10">94.2%</h3>
+                <h3 className="text-3xl font-bold text-slate-900 relative z-10">{collectionRate.toFixed(1)}%</h3>
                 <div className="mt-4 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden relative z-10">
-                  <div className="h-full bg-emerald-500 w-[94.2%]" />
+                  <div className="h-full bg-emerald-500" style={{ width: `${collectionRate.toFixed(1)}%` }} />
                 </div>
               </div>
             </>

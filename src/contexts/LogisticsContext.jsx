@@ -81,6 +81,8 @@ export const LogisticsProvider = ({ children }) => {
         address: u.company_details.address,
         feeType: u.company_details.feeType ? u.company_details.feeType.toUpperCase() : undefined,
         feeValue: Number(u.company_details.feeValue) || 0,
+        includedDistance: Number(u.company_details.includedDistance || u.company_details.included_distance) || 0,
+        extraDistanceFee: Number(u.company_details.extraDistanceFee || u.company_details.extra_distance_fee) || 0,
       } : undefined,
       vehicleNumber: u.vehicle_number,
       vehicleType: u.vehicle_type,
@@ -97,6 +99,8 @@ export const LogisticsProvider = ({ children }) => {
     vehicleType: d.vehicle_type || d.vehicleType,
     cashInHand: Number(d.cash_in_hand) || 0,
     totalDeliveries: d.total_deliveries,
+    isOnline: !!d.is_online,
+    onlineMinutes: Number(d.online_minutes) || 0,
   });
 
   const orderToApi = (o) => {
@@ -163,6 +167,8 @@ export const LogisticsProvider = ({ children }) => {
         },
         feeType: (u.companyDetails?.feeType || "fixed").toLowerCase(),
         feeValue: Number(u.companyDetails?.feeValue) || 0,
+        includedDistance: Number(u.companyDetails?.includedDistance) || 0,
+        extraDistanceFee: Number(u.companyDetails?.extraDistanceFee) || 0,
       } : undefined
     };
   };
@@ -305,7 +311,13 @@ export const LogisticsProvider = ({ children }) => {
 
   const login = async (email, password) => {
     const response = await api.post('/auth/login', { email, password });
-    const { token, refreshToken, user } = response.data || response;
+    const data = response.data || response;
+
+    if (data?.step2Required) {
+      return data;
+    }
+
+    const { token, refreshToken, user } = data;
 
     // Set token in localStorage first so subsequent calls have it
     localStorage.setItem('logiflow_user', JSON.stringify({ token, refreshToken, ...mapUser(user) }));
@@ -321,6 +333,34 @@ export const LogisticsProvider = ({ children }) => {
       const userWithToken = { ...mapUser(user), token, refreshToken };
       setCurrentUser(userWithToken);
     }
+    return data;
+  };
+
+  const verifyOtp = async (email, otp) => {
+    const response = await api.post('/auth/verify-login-otp', { email, otp });
+    const data = response.data || response;
+    const { token, accessToken, refreshToken, user } = data;
+    const activeToken = token || accessToken;
+
+    if (!activeToken || !user) {
+      throw new Error('Invalid verification response');
+    }
+
+    // Set token in localStorage first so subsequent calls have it
+    localStorage.setItem('logiflow_user', JSON.stringify({ token: activeToken, refreshToken, ...mapUser(user) }));
+    
+    // Immediately fetch full profile details
+    try {
+      const profileResponse = await api.get('/auth/me');
+      const fullUser = { ...mapUser(profileResponse.data || profileResponse), token: activeToken, refreshToken };
+      setCurrentUser(fullUser);
+      localStorage.setItem('logiflow_user', JSON.stringify(fullUser));
+    } catch (err) {
+      // Fallback to response if /me fails
+      const userWithToken = { ...mapUser(user), token: activeToken, refreshToken };
+      setCurrentUser(userWithToken);
+    }
+    return data;
   };
 
   const logout = () => {
@@ -457,7 +497,7 @@ export const LogisticsProvider = ({ children }) => {
       currentUser, users, drivers, orders, invoices, settlements, toast,
       revenueStats, fetchRevenueStats,
       fetchOrders, fetchUsers, fetchDrivers, fetchInvoices, fetchSettlements,
-      login, logout, updateOrderStatus, assignDriver, createOrder, deleteOrder, cancelOrder,
+      login, verifyOtp, logout, updateOrderStatus, assignDriver, createOrder, deleteOrder, cancelOrder,
       settleDriverCash, toggleUserStatus, addUser, updateUser, deleteUser,
       generateInvoices, markInvoicePaid, fetchData,
       forgotPassword, resetPassword,

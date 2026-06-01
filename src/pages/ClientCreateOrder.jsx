@@ -376,10 +376,18 @@ export const ClientCreateOrder = () => {
                           <label className="text-sm font-bold text-indigo-600">Fee Value {formData.feeType === 'PERCENTAGE' ? '(%)' : `(${formData.currency || 'SAR'})`}</label>
                           <input 
                             type="number"
+                            min="0"
                             className="w-full px-4 py-2 bg-white border border-indigo-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/20"
                             placeholder="30"
                             value={formData.feeValue}
-                            onChange={e => setFormData({...formData, feeValue: e.target.value})}
+                            onChange={e => {
+                              const val = e.target.value;
+                              if (val !== '' && Number(val) < 0) {
+                                setFormData({...formData, feeValue: '0'});
+                              } else {
+                                setFormData({...formData, feeValue: val});
+                              }
+                            }}
                           />
                         </div>
                         <div className="space-y-1.5">

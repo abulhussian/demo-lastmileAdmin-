@@ -19,7 +19,7 @@ export default defineConfig(({ mode }) => {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // Do not modifyâ€”file watching is disabled to prevent flickering during agent edits.
       //  Allow Serveo subdomains to access the dev server
-      allowedHosts: ['.lhr.life', 'localhost', 'fff5aa2d606ef9.lhr.life'],
+      allowedHosts: ['.lhr.life', 'localhost', 'fff5aa2d606ef9.lhr.life', '.trycloudflare.com'],
       //  Fix HMR by forcing it to use the secure tunnel port (443)
       hmr: process.env.DISABLE_HMR === 'true' ? false : {
         clientPort: 443,

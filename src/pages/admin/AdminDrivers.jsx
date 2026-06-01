@@ -23,6 +23,40 @@ import {
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
+const countryCodes = [
+  '+1242', '+1246', '+1264', '+1268', '+1284', '+1340', '+1345', '+1441', '+1473', '+1649', '+1664', '+1758', '+1767', '+1784', '+1809', '+1829', '+1849', '+1868', '+1869', '+1876',
+  '+998', '+996', '+995', '+994', '+993', '+992', '+977', '+976', '+975', '+974', '+973', '+972', '+971', '+970', '+968', '+967', '+966', '+965', '+964', '+963', '+962', '+961', '+960', '+886', '+880', '+856', '+855', '+853', '+852', '+850', '+689', '+687', '+685', '+679', '+678', '+677', '+676', '+675', '+674', '+673', '+672', '+670', '+599', '+598', '+597', '+595', '+593', '+592', '+591', '+590', '+509', '+508', '+507', '+506', '+505', '+504', '+503', '+502', '+501', '+500', '+423', '+421', '+420', '+389', '+387', '+386', '+385', '+382', '+381', '+380', '+378', '+377', '+376', '+375', '+374', '+373', '+372', '+371', '+370', '+359', '+358', '+357', '+356', '+355', '+354', '+353', '+352', '+351', '+350', '+299', '+298', '+297', '+291', '+290', '+269', '+268', '+267', '+266', '+265', '+264', '+263', '+262', '+261', '+260', '+258', '+257', '+256', '+255', '+254', '+253', '+252', '+251', '+250', '+249', '+248', '+247', '+246', '+245', '+244', '+243', '+242', '+241', '+240', '+239', '+238', '+237', '+236', '+235', '+234', '+233', '+232', '+231', '+230', '+229', '+228', '+227', '+226', '+225', '+224', '+223', '+222', '+221', '+220', '+218', '+216', '+213', '+212', '+211',
+  '+98', '+95', '+94', '+93', '+92', '+90', '+86', '+84', '+82', '+81', '+66', '+65', '+64', '+63', '+62', '+61', '+60', '+58', '+57', '+56', '+55', '+54', '+53', '+52', '+51', '+49', '+48', '+47', '+46', '+45', '+44', '+43', '+41', '+40', '+39', '+36', '+34', '+33', '+32', '+31', '+30', '+27', '+20',
+  '+7', '+1'
+];
+
+const splitPhoneNumber = (phoneStr) => {
+  if (!phoneStr) return { countryCode: '+966', number: '' };
+  for (const code of countryCodes) {
+    if (phoneStr.startsWith(code)) {
+      return { countryCode: code, number: phoneStr.substring(code.length) };
+    }
+  }
+  if (phoneStr.startsWith('+')) {
+    const match = phoneStr.match(/^\+(\d{1,4})/);
+    if (match) {
+      const code = '+' + match[1];
+      return { countryCode: code, number: phoneStr.substring(code.length) };
+    }
+    return { countryCode: '+966', number: phoneStr };
+  }
+  return { countryCode: '+966', number: phoneStr };
+};
+
+const formatOnlineTime = (minutes) => {
+  if (!minutes || minutes <= 0) return '0h';
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+};
+
 export const AdminDrivers = () => {
   const { drivers, settleDriverCash, toggleUserStatus, addUser, showToast, fetchDrivers } = useLogistics();
   const [searchTerm, setSearchTerm] = useState('');
@@ -38,6 +72,13 @@ export const AdminDrivers = () => {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
+  const [phoneParts, setPhoneParts] = useState({ countryCode: '+966', number: '' });
+
+  React.useEffect(() => {
+    if (isModalOpen) {
+      setPhoneParts({ countryCode: '+966', number: '' });
+    }
+  }, [isModalOpen]);
 
   const clearFieldError = (fieldName) => {
     if (fieldErrors[fieldName]) {
@@ -124,17 +165,24 @@ export const AdminDrivers = () => {
 
     const name = (formData.get('name') || '').toString().trim();
     const email = (formData.get('email') || '').toString().trim();
-    const phone = (formData.get('phone') || '').toString().trim();
+    const countryCode = (formData.get('countryCode') || '').toString().trim();
+    const phoneNum = (formData.get('phone') || '').toString().trim();
     const vehicleNumber = (formData.get('vehicleNumber') || '').toString().trim();
     const vehicleType = formData.get('vehicleType');
     const password = (formData.get('password') || '').toString().trim();
 
     if (!name) errors.name = 'Full name is required';
     if (!email) errors.email = 'Email address is required';
-    if (!phone) errors.phone = 'Phone number is required';
+    if (!countryCode || countryCode === '+') {
+      errors.phone = 'Valid country code (e.g. +966) is required';
+    } else if (!phoneNum) {
+      errors.phone = 'Phone number is required';
+    }
     if (!vehicleNumber) errors.vehicleNumber = 'Vehicle plate is required';
     if (!vehicleType) errors.vehicleType = 'Vehicle type is required';
     if (!password) errors.password = 'Password is required';
+
+    const phone = `${countryCode}${phoneNum}`;
 
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
@@ -234,7 +282,9 @@ export const AdminDrivers = () => {
           {filteredDrivers.map((driver) => (
             <div key={driver.id} className={cn(
               "bg-white rounded-2xl border transition-all duration-300 group overflow-hidden",
-              driver.active ? "border-slate-200 hover:shadow-xl hover:border-indigo-200" : "border-slate-100 opacity-60 grayscale-[0.5]"
+              driver.active 
+                ? (driver.isOnline ? "border-indigo-200 hover:shadow-xl shadow-indigo-50/50" : "border-slate-200 hover:shadow-md")
+                : "border-slate-100 opacity-60 grayscale-[0.5]"
             )}>
               {/* Header Info */}
               <div className="p-6 pb-4 flex items-start justify-between">
@@ -243,7 +293,13 @@ export const AdminDrivers = () => {
                     {driver.name.charAt(0)}
                   </div>
                   <div>
-                    <h3 className="font-bold text-slate-900 text-base leading-tight">{driver.name}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-slate-900 text-base leading-tight">{driver.name}</h3>
+                      <span className={cn(
+                        "w-2 h-2 rounded-full",
+                        driver.isOnline ? "bg-emerald-500 animate-pulse" : "bg-slate-300"
+                      )} title={driver.isOnline ? 'Online' : 'Offline'} />
+                    </div>
                     <div className="flex items-center gap-1.5 text-slate-400 mt-1">
                       <Truck size={12} />
                       <span className="text-[10px] font-bold uppercase tracking-widest">{driver.vehicleNumber}</span>
@@ -254,12 +310,12 @@ export const AdminDrivers = () => {
                   onClick={() => toggleUserStatus(driver.id, !!driver.active)}
                   className={cn(
                     "px-2 py-1 rounded-lg text-[10px] font-bold transition-all border",
-                    driver.active
+                    driver.isOnline
                       ? "bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100"
                       : "bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100"
                   )}
                 >
-                  {driver.active ? 'ACTIVE' : 'INACTIVE'}
+                  {driver.isOnline ? 'ACTIVE' : 'OFFLINE'}
                 </button>
               </div>
 
@@ -296,7 +352,9 @@ export const AdminDrivers = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <Clock size={14} className="text-slate-300" />
-                    <span className="text-[12px] font-medium whitespace-nowrap">Online 4h</span>
+                    <span className="text-[12px] font-medium whitespace-nowrap">
+                      {driver.isOnline ? `Online ${formatOnlineTime(driver.onlineMinutes)}` : 'Offline'}
+                    </span>
                   </div>
                 </div>
 
@@ -465,20 +523,43 @@ export const AdminDrivers = () => {
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5">Phone</label>
-                  <input 
-                    name="phone" 
-                    type="tel"
-                    inputMode="numeric"
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/[^0-9]/g, '');
-                      e.target.value = val;
-                      clearFieldError('phone');
-                    }}
-                    className={cn(
-                      "w-full px-3 py-2.5 bg-slate-50 border rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm font-medium",
-                      fieldErrors.phone ? "border-rose-300" : "border-slate-200"
-                    )} 
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      name="countryCode"
+                      type="text"
+                      placeholder="+966"
+                      value={phoneParts.countryCode}
+                      onChange={(e) => {
+                        let val = e.target.value.replace(/[^0-9+]/g, '');
+                        if (val && !val.startsWith('+')) {
+                          val = '+' + val.replace(/\+/g, '');
+                        } else if (val) {
+                          val = '+' + val.substring(1).replace(/\+/g, '');
+                        }
+                        setPhoneParts(prev => ({ ...prev, countryCode: val }));
+                        clearFieldError('phone');
+                      }}
+                      className={cn(
+                        "w-[80px] shrink-0 px-3 py-2.5 bg-slate-50 border rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm font-medium",
+                        fieldErrors.phone ? "border-rose-300" : "border-slate-200"
+                      )}
+                    />
+                    <input 
+                      name="phone" 
+                      type="tel"
+                      inputMode="numeric"
+                      value={phoneParts.number}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9]/g, '');
+                        setPhoneParts(prev => ({ ...prev, number: val }));
+                        clearFieldError('phone');
+                      }}
+                      className={cn(
+                        "flex-1 min-w-0 px-3 py-2.5 bg-slate-50 border rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm font-medium",
+                        fieldErrors.phone ? "border-rose-300" : "border-slate-200"
+                      )} 
+                    />
+                  </div>
                   {fieldErrors.phone && <p className="text-rose-500 text-[10px] mt-1 font-bold uppercase">{fieldErrors.phone}</p>}
                 </div>
               </div>

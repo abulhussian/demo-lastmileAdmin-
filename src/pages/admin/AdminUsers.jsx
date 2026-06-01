@@ -5,8 +5,30 @@ import { Search, Plus, Edit2, Trash2, Shield, User as UserIcon, Eye, EyeOff } fr
 import { cn } from '../../lib/utils';
 import { ConfirmationModal } from '../../components/ConfirmationModal';
 
+const countryCodes = [
+  '+1242', '+1246', '+1264', '+1268', '+1284', '+1340', '+1345', '+1441', '+1473', '+1649', '+1664', '+1758', '+1767', '+1784', '+1809', '+1829', '+1849', '+1868', '+1869', '+1876',
+  '+998', '+996', '+995', '+994', '+993', '+992', '+977', '+976', '+975', '+974', '+973', '+972', '+971', '+970', '+968', '+967', '+966', '+965', '+964', '+963', '+962', '+961', '+960', '+886', '+880', '+856', '+855', '+853', '+852', '+850', '+689', '+687', '+685', '+679', '+678', '+677', '+676', '+675', '+674', '+673', '+672', '+670', '+599', '+598', '+597', '+595', '+593', '+592', '+591', '+590', '+509', '+508', '+507', '+506', '+505', '+504', '+503', '+502', '+501', '+500', '+423', '+421', '+420', '+389', '+387', '+386', '+385', '+382', '+381', '+380', '+378', '+377', '+376', '+375', '+374', '+373', '+372', '+371', '+370', '+359', '+358', '+357', '+356', '+355', '+354', '+353', '+352', '+351', '+350', '+299', '+298', '+297', '+291', '+290', '+269', '+268', '+267', '+266', '+265', '+264', '+263', '+262', '+261', '+260', '+258', '+257', '+256', '+255', '+254', '+253', '+252', '+251', '+250', '+249', '+248', '+247', '+246', '+245', '+244', '+243', '+242', '+241', '+240', '+239', '+238', '+237', '+236', '+235', '+234', '+233', '+232', '+231', '+230', '+229', '+228', '+227', '+226', '+225', '+224', '+223', '+222', '+221', '+220', '+218', '+216', '+213', '+212', '+211',
+  '+98', '+95', '+94', '+93', '+92', '+90', '+86', '+84', '+82', '+81', '+66', '+65', '+64', '+63', '+62', '+61', '+60', '+58', '+57', '+56', '+55', '+54', '+53', '+52', '+51', '+49', '+48', '+47', '+46', '+45', '+44', '+43', '+41', '+40', '+39', '+36', '+34', '+33', '+32', '+31', '+30', '+27', '+20',
+  '+7', '+1'
+];
 
-
+const splitPhoneNumber = (phoneStr) => {
+  if (!phoneStr) return { countryCode: '+966', number: '' };
+  for (const code of countryCodes) {
+    if (phoneStr.startsWith(code)) {
+      return { countryCode: code, number: phoneStr.substring(code.length) };
+    }
+  }
+  if (phoneStr.startsWith('+')) {
+    const match = phoneStr.match(/^\+(\d{1,4})/);
+    if (match) {
+      const code = '+' + match[1];
+      return { countryCode: code, number: phoneStr.substring(code.length) };
+    }
+    return { countryCode: '+966', number: phoneStr };
+  }
+  return { countryCode: '+966', number: phoneStr };
+};
 
 const AdminUsers = () => {
   const { users, drivers, addUser, updateUser, deleteUser, toggleUserStatus, showToast, fetchUsers, fetchDrivers } = useLogistics();
@@ -24,6 +46,17 @@ const AdminUsers = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, user: null });
   const [fieldErrors, setFieldErrors] = useState({});
+  const [phoneParts, setPhoneParts] = useState({ countryCode: '+966', number: '' });
+
+  React.useEffect(() => {
+    if (isModalOpen) {
+      if (editingUser) {
+        setPhoneParts(splitPhoneNumber(editingUser.phone));
+      } else {
+        setPhoneParts({ countryCode: '+966', number: '' });
+      }
+    }
+  }, [editingUser, isModalOpen]);
 
   const clearFieldError = (fieldName) => {
     if (fieldErrors[fieldName]) {
@@ -57,13 +90,20 @@ const AdminUsers = () => {
     // Base validation
     const name = (formData.get('name') || '').toString().trim();
     const email = (formData.get('email') || '').toString().trim();
-    const phone = (formData.get('phone') || '').toString().trim();
+    const countryCode = (formData.get('countryCode') || '').toString().trim();
+    const phoneNum = (formData.get('phone') || '').toString().trim();
     const role = formData.get('role');
 
     if (!name) errors.name = 'Full name is required';
     if (!email) errors.email = 'Email address is required';
-    if (!phone) errors.phone = 'Phone number is required';
+    if (!countryCode || countryCode === '+') {
+      errors.phone = 'Valid country code (e.g. +966) is required';
+    } else if (!phoneNum) {
+      errors.phone = 'Phone number is required';
+    }
     
+    const phone = `${countryCode}${phoneNum}`;
+
     if (!editingUser) {
       const password = (formData.get('password') || '').toString().trim();
       if (!password) errors.password = 'Password is required';
@@ -117,6 +157,8 @@ const AdminUsers = () => {
         phone: formData.get('companyPhone'),
         feeType: formData.get('feeType'),
         feeValue: Number(formData.get('feeValue')) || 0,
+        includedDistance: Number(formData.get('includedDistance')) || 0,
+        extraDistanceFee: Number(formData.get('extraDistanceFee')) || 0,
         address: {
           street: formData.get('street'),
           city: formData.get('city'),
@@ -335,23 +377,47 @@ const AdminUsers = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Phone Number</label>
-                <input
-                  name="phone"
-                  type="tel"
-                  inputMode="numeric"
-                  defaultValue={editingUser?.phone || ''}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/[^0-9]/g, '');
-                    e.target.value = val;
-                    clearFieldError('phone');
-                  }}
-                  className={cn(
-                    "w-full px-4 py-2 bg-slate-50 border rounded-lg focus:outline-none focus:ring-2 transition-all",
-                    fieldErrors.phone 
-                      ? "border-rose-300 focus:ring-rose-500/20 focus:border-rose-500" 
-                      : "border-slate-200 focus:ring-indigo-500/20 focus:border-indigo-500"
-                  )}
-                />
+                <div className="flex gap-2">
+                  <input
+                    name="countryCode"
+                    type="text"
+                    placeholder="+966"
+                    value={phoneParts.countryCode}
+                    onChange={(e) => {
+                      let val = e.target.value.replace(/[^0-9+]/g, '');
+                      if (val && !val.startsWith('+')) {
+                        val = '+' + val.replace(/\+/g, '');
+                      } else if (val) {
+                        val = '+' + val.substring(1).replace(/\+/g, '');
+                      }
+                      setPhoneParts(prev => ({ ...prev, countryCode: val }));
+                      clearFieldError('phone');
+                    }}
+                    className={cn(
+                      "w-1/3 px-3 py-2 bg-slate-50 border rounded-lg focus:outline-none focus:ring-2 transition-all text-sm font-medium",
+                      fieldErrors.phone 
+                        ? "border-rose-300 focus:ring-rose-500/20 focus:border-rose-500" 
+                        : "border-slate-200 focus:ring-indigo-500/20 focus:border-indigo-500"
+                    )}
+                  />
+                  <input
+                    name="phone"
+                    type="tel"
+                    inputMode="numeric"
+                    value={phoneParts.number}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^0-9]/g, '');
+                      setPhoneParts(prev => ({ ...prev, number: val }));
+                      clearFieldError('phone');
+                    }}
+                    className={cn(
+                      "flex-1 px-4 py-2 bg-slate-50 border rounded-lg focus:outline-none focus:ring-2 transition-all",
+                      fieldErrors.phone 
+                        ? "border-rose-300 focus:ring-rose-500/20 focus:border-rose-500" 
+                        : "border-slate-200 focus:ring-indigo-500/20 focus:border-indigo-500"
+                    )}
+                  />
+                </div>
                 {fieldErrors.phone && <p className="text-rose-500 text-xs mt-1 font-medium">{fieldErrors.phone}</p>}
               </div>
 
@@ -497,6 +563,27 @@ const AdminUsers = () => {
                         name="feeValue" 
                         type="number" 
                         defaultValue={editingUser?.companyDetails?.feeValue || 15} 
+                        className="w-full px-3 py-2 bg-white border border-indigo-100 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/10 text-sm" 
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 pt-2">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">Included Distance (km)</label>
+                      <input 
+                        name="includedDistance" 
+                        type="number" 
+                        defaultValue={editingUser?.companyDetails?.includedDistance || 0} 
+                        className="w-full px-3 py-2 bg-white border border-indigo-100 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/10 text-sm" 
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">Extra Distance Fee (per km)</label>
+                      <input 
+                        name="extraDistanceFee" 
+                        type="number" 
+                        defaultValue={editingUser?.companyDetails?.extraDistanceFee || 0} 
                         className="w-full px-3 py-2 bg-white border border-indigo-100 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500/10 text-sm" 
                       />
                     </div>
