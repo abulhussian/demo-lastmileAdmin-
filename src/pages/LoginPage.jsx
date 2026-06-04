@@ -50,6 +50,19 @@ export const LoginPage = () => {
     }
   };
 
+  const handleDemoOtp = async () => {
+    setError('');
+    setOtp('000000');
+    setLoading(true);
+    try {
+      await verifyOtp(email, '000000');
+    } catch (err) {
+      setError(err.message || 'Verification failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleResendOtp = async () => {
     setError('');
     setMessage('');
@@ -182,6 +195,16 @@ export const LoginPage = () => {
                         required
                         disabled={loading}
                       />
+                    </div>
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={handleDemoOtp}
+                        disabled={loading}
+                        className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer disabled:opacity-50"
+                      >
+                        Use Demo OTP (000000)
+                      </button>
                     </div>
                   </div>
 

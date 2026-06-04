@@ -310,7 +310,7 @@ export const LogisticsProvider = ({ children }) => {
   }, []);
 
   const login = async (email, password) => {
-    const response = await api.post('/auth/login', { email, password });
+    const response = await api.post('/auth/demo-login', { email, password });
     const data = response.data || response;
 
     if (data?.step2Required) {
@@ -321,7 +321,7 @@ export const LogisticsProvider = ({ children }) => {
 
     // Set token in localStorage first so subsequent calls have it
     localStorage.setItem('logiflow_user', JSON.stringify({ token, refreshToken, ...mapUser(user) }));
-    
+
     // Immediately fetch full profile details
     try {
       const profileResponse = await api.get('/auth/me');
@@ -348,7 +348,7 @@ export const LogisticsProvider = ({ children }) => {
 
     // Set token in localStorage first so subsequent calls have it
     localStorage.setItem('logiflow_user', JSON.stringify({ token: activeToken, refreshToken, ...mapUser(user) }));
-    
+
     // Immediately fetch full profile details
     try {
       const profileResponse = await api.get('/auth/me');
@@ -371,12 +371,12 @@ export const LogisticsProvider = ({ children }) => {
   const updateOrderStatus = async (orderId, status) => {
     // Optimistic Update
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
-    
+
     try {
       const apiStatus = status.toLowerCase().replace(/_/g, '-');
       await api.patch(`/orders/${orderId}/status`, { status: apiStatus });
       // Silent refresh of orders
-      fetchOrders(); 
+      fetchOrders();
     } catch (err) {
       await fetchOrders(); // Rollback/Sync on error
       throw err;
@@ -385,9 +385,9 @@ export const LogisticsProvider = ({ children }) => {
 
   const assignDriver = async (orderId, driverId) => {
     const driver = drivers.find(d => d.id === driverId);
-    
+
     // Optimistic Update
-    setOrders(prev => prev.map(o => 
+    setOrders(prev => prev.map(o =>
       o.id === orderId ? { ...o, driverId, driverName: driver?.name || 'Assigned' } : o
     ));
 

@@ -9,7 +9,8 @@ import {
   FileText, 
   LogOut,
   ChevronRight,
-  UserCircle
+  UserCircle,
+  Shuffle
 } from 'lucide-react';
 import { useLogistics } from '../contexts/LogisticsContext';
 import { cn } from '../lib/utils';
@@ -22,6 +23,7 @@ export const Sidebar = () => {
     { name: 'Dashboard', icon: LayoutDashboard, path: '/admin' },
     { name: 'Orders', icon: Package, path: '/admin/orders' },
     { name: 'Drivers', icon: Truck, path: '/admin/drivers' },
+    { name: 'Order Allocations', icon: Shuffle, path: '/admin/allocations' },
     { name: 'Cash Flow', icon: Banknote, path: '/admin/cash' },
     { name: 'Billing', icon: FileText, path: '/admin/billing' },
     { name: 'Users', icon: Users, path: '/admin/users' },

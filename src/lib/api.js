@@ -8,8 +8,8 @@
 //   return 'http://localhost:5005/api';
 // };
 
-// const BASE_URL = `https://last-mile-backend-m63f.onrender.com/api`;
-const BASE_URL = `http://localhost:5005/api`;
+const BASE_URL = `https://last-mile-backend-m63f.onrender.com/api`;
+// const BASE_URL = `http://192.168.1.15:5005/api`;
 // const BASE_URL = `https://blessed-owned-qualifying-york.trycloudflare.com/api`
 
 
@@ -105,7 +105,7 @@ async function request(endpoint, options = {}) {
       credentials: 'include',
     });
 
-    if (response.status === 401 && endpoint !== '/auth/login' && endpoint !== '/auth/refresh') {
+    if (response.status === 401 && endpoint !== '/auth/demo-login' && endpoint !== '/auth/refresh') {
       const isTokenExpired = true;
 
       if (isTokenExpired) {
@@ -135,7 +135,7 @@ async function request(endpoint, options = {}) {
           isRefreshing = false;
           processQueue(refreshError, null);
           localStorage.removeItem('logiflow_user');
-          window.location.href = '/login';
+          window.location.href = '/demo-login';
           throw refreshError;
         }
       }

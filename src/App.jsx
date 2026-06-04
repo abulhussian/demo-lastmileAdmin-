@@ -5,6 +5,7 @@ import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { AdminOrders } from './pages/admin/AdminOrders';
 import { AdminDrivers } from './pages/admin/AdminDrivers';
+import { AdminAllocations } from './pages/admin/AdminAllocations';
 import { AdminCash } from './pages/admin/AdminCash';
 import { AdminBilling } from './pages/admin/AdminBilling';
 import { ClientDashboard } from './pages/client/ClientDashboard';
@@ -36,6 +37,7 @@ const AppRoutes = () => {
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/orders" element={<AdminOrders />} />
           <Route path="/admin/drivers" element={<AdminDrivers />} />
+          <Route path="/admin/allocations" element={<AdminAllocations />} />
           <Route path="/admin/cash" element={<AdminCash />} />
           <Route path="/admin/billing" element={<AdminBilling />} />
           <Route path="/admin/users" element={<AdminUsers />} />
