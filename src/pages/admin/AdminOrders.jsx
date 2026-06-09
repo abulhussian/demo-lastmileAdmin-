@@ -38,6 +38,7 @@ export const AdminOrders = () => {
   const navigate = useNavigate();
   const [isAssigning, setIsAssigning] = useState(false);
   const isAdmin = currentUser?.role === 'ADMIN';
+  const isCompletedOrCancelled = selectedOrder?.status?.toUpperCase() === 'DELIVERED' || selectedOrder?.status?.toUpperCase() === 'CANCELLED';
 
   const getOrderCurrency = (order) => {
     if (!order) return 'SAR';
@@ -450,16 +451,25 @@ export const AdminOrders = () => {
                           </div>
                           <p className="text-sm font-bold text-indigo-950">{selectedOrder.driverName}</p>
                         </div>
-                        <button onClick={() => setShowAssignForm(true)} className="text-[11px] font-bold text-indigo-600 hover:underline">Change</button>
+                        {!isCompletedOrCancelled && (
+                          <button onClick={() => setShowAssignForm(true)} className="text-[11px] font-bold text-indigo-600 hover:underline">Change</button>
+                        )}
                       </div>
                     ) : (
-                      <button
-                        onClick={() => setShowAssignForm(true)}
-                        className="w-full py-4 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50 transition-all text-xs font-bold flex flex-col items-center gap-2"
-                      >
-                        <Truck size={24} />
-                        Assign Driver
-                      </button>
+                      isCompletedOrCancelled ? (
+                        <div className="w-full py-4 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 bg-slate-50 text-xs font-bold flex flex-col items-center gap-2 opacity-60">
+                          <Truck size={24} />
+                          No Driver Assigned (Closed)
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setShowAssignForm(true)}
+                          className="w-full py-4 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50 transition-all text-xs font-bold flex flex-col items-center gap-2"
+                        >
+                          <Truck size={24} />
+                          Assign Driver
+                        </button>
+                      )
                     )}
 
                     {showAssignForm && (
@@ -502,20 +512,25 @@ export const AdminOrders = () => {
             </div>
 
             <div className="px-8 py-5 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-              <button
-                onClick={async () => {
-                  if (confirm('Cancel this order?')) {
-                    await cancelOrder(selectedOrder.id);
-                    setSelectedOrder(null);
-                  }
-                }}
-                className="text-rose-600 font-bold text-xs hover:underline"
-              >
-                Cancel Order
-              </button>
+              {!isCompletedOrCancelled ? (
+                <button
+                  onClick={async () => {
+                    if (confirm('Cancel this order?')) {
+                      await cancelOrder(selectedOrder.id);
+                      setSelectedOrder(null);
+                    }
+                  }}
+                  className="text-rose-600 font-bold text-xs hover:underline"
+                >
+                  Cancel Order
+                </button>
+              ) : (
+                <div />
+              )}
               <div className="flex gap-3">
                 <select
-                  className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs font-bold outline-none cursor-pointer focus:ring-2 focus:ring-indigo-600/10"
+                  disabled={isCompletedOrCancelled}
+                  className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs font-bold outline-none cursor-pointer focus:ring-2 focus:ring-indigo-600/10 disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-100"
                   onChange={async (e) => {
                     const newStatus = e.target.value;
                     try {

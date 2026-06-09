@@ -19,7 +19,8 @@ import {
   ArrowDownCircle,
   Eye,
   EyeOff,
-  Download
+  Download,
+  Compass
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -60,10 +61,34 @@ const formatOnlineTime = (minutes) => {
 export const AdminDrivers = () => {
   const { drivers, settleDriverCash, toggleUserStatus, addUser, showToast, fetchDrivers } = useLogistics();
   const [searchTerm, setSearchTerm] = useState('');
+  const [driverZonesMap, setDriverZonesMap] = useState({});
 
   React.useEffect(() => {
     fetchDrivers();
   }, [fetchDrivers]);
+
+  React.useEffect(() => {
+    if (drivers && drivers.length > 0) {
+      const loadDriverZones = async () => {
+        const mapping = {};
+        await Promise.all(
+          drivers.map(async (driver) => {
+            try {
+              const res = await api.get(`/zones/driver/${driver.id}`);
+              if (res && res.data && res.data.length > 0) {
+                mapping[driver.id] = res.data[0];
+              }
+            } catch (e) {
+              console.error(e);
+            }
+          })
+        );
+        setDriverZonesMap(mapping);
+      };
+      loadDriverZones();
+    }
+  }, [drivers]);
+
   const [cashFilter, setCashFilter] = useState('ALL');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -300,9 +325,22 @@ export const AdminDrivers = () => {
                         driver.isOnline ? "bg-emerald-500 animate-pulse" : "bg-slate-300"
                       )} title={driver.isOnline ? 'Online' : 'Offline'} />
                     </div>
-                    <div className="flex items-center gap-1.5 text-slate-400 mt-1">
-                      <Truck size={12} />
-                      <span className="text-[10px] font-bold uppercase tracking-widest">{driver.vehicleNumber}</span>
+                    <div className="flex flex-col gap-1 mt-1">
+                      <div className="flex items-center gap-1.5 text-slate-400">
+                        <Truck size={12} />
+                        <span className="text-[10px] font-bold uppercase tracking-widest">{driver.vehicleNumber}</span>
+                      </div>
+                      {driverZonesMap[driver.id] ? (
+                        <div className="flex items-center gap-1 text-[10px] font-bold text-indigo-600">
+                          <Compass size={11} className="shrink-0" />
+                          <span>Zone: {driverZonesMap[driver.id].name}</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 text-[10px] font-medium text-slate-400">
+                          <Compass size={11} className="shrink-0" />
+                          <span>No Zone Assigned</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

@@ -8,9 +8,9 @@
 //   return 'http://localhost:5005/api';
 // };
 
-const BASE_URL = `https://last-mile-backend-m63f.onrender.com/api`;
+// const BASE_URL = `https://last-mile-backend-m63f.onrender.com/api`;
 // const BASE_URL = `http://192.168.1.15:5005/api`;
-// const BASE_URL = `https://blessed-owned-qualifying-york.trycloudflare.com/api`
+const BASE_URL = `https://debug-acquisition-drinks-charms.trycloudflare.com/api`
 
 
 

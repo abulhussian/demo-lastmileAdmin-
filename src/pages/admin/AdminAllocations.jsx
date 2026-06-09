@@ -27,16 +27,55 @@ export const AdminAllocations = () => {
   const [loadingStrategy, setLoadingStrategy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [driverZonesMap, setDriverZonesMap] = useState({});
+
+  const [clubbingEnabled, setClubbingEnabled] = useState(() => {
+    return localStorage.getItem('fifo_clubbing_enabled') === 'true';
+  });
+  const [maxWaitTime, setMaxWaitTime] = useState(() => {
+    return localStorage.getItem('fifo_max_wait_time') || '5';
+  });
+  const [maxDistance, setMaxDistance] = useState(() => {
+    return localStorage.getItem('fifo_max_distance') || '2';
+  });
 
   // Fetch drivers exactly once on mount
   useEffect(() => {
     fetchDrivers();
   }, []);
 
-  const handleSaveStrategy = async (strategyValue) => {
+  useEffect(() => {
+    if (drivers && drivers.length > 0) {
+      const loadDriverZones = async () => {
+        const mapping = {};
+        await Promise.all(
+          drivers.map(async (driver) => {
+            try {
+              const res = await api.get(`/zones/driver/${driver.id}`);
+              if (res && res.data && res.data.length > 0) {
+                mapping[driver.id] = res.data[0];
+              }
+            } catch (e) {
+              console.error(e);
+            }
+          })
+        );
+        setDriverZonesMap(mapping);
+      };
+      loadDriverZones();
+    }
+  }, [drivers]);
+
+  const handleSaveStrategy = async (strategyValue, extras = {}) => {
     try {
       setSaving(true);
-      const response = await api.post('/drivers/assignment-strategy', { strategy: strategyValue });
+      const payload = {
+        strategy: strategyValue,
+        clubbingEnabled: extras.clubbingEnabled !== undefined ? extras.clubbingEnabled : clubbingEnabled,
+        maxWaitTime: extras.maxWaitTime !== undefined ? extras.maxWaitTime : maxWaitTime,
+        maxDistance: extras.maxDistance !== undefined ? extras.maxDistance : maxDistance
+      };
+      const response = await api.post('/drivers/assignment-strategy', payload);
       if (response && response.data && response.data.strategy) {
         const updated = response.data.strategy.toLowerCase();
         setSelectedStrategy(updated);
@@ -51,6 +90,30 @@ export const AdminAllocations = () => {
       showToast(err.message || 'Failed to update assignment strategy', 'error');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleToggleClubbing = async (enabled) => {
+    setClubbingEnabled(enabled);
+    localStorage.setItem('fifo_clubbing_enabled', String(enabled));
+    if (selectedStrategy === 'fifo') {
+      await handleSaveStrategy('fifo', { clubbingEnabled: enabled });
+    }
+  };
+
+  const handleWaitTimeChange = async (time) => {
+    setMaxWaitTime(time);
+    localStorage.setItem('fifo_max_wait_time', time);
+    if (selectedStrategy === 'fifo') {
+      await handleSaveStrategy('fifo', { maxWaitTime: time });
+    }
+  };
+
+  const handleDistanceChange = async (distance) => {
+    setMaxDistance(distance);
+    localStorage.setItem('fifo_max_distance', distance);
+    if (selectedStrategy === 'fifo') {
+      await handleSaveStrategy('fifo', { maxDistance: distance });
     }
   };
 
@@ -174,6 +237,61 @@ export const AdminAllocations = () => {
                             </li>
                           ))}
                         </ul>
+
+                        {strategy.id === 'fifo' && isSelected && (
+                          <div 
+                            onClick={(e) => e.stopPropagation()} 
+                            className="mt-4 pt-4 border-t border-slate-100 w-full space-y-4 cursor-default"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <h4 className="text-xs font-bold text-slate-800">Enable Order Clubbing</h4>
+                                <p className="text-[10px] text-slate-500">Group multiple orders together based on proximity and timing</p>
+                              </div>
+                              <label className="relative inline-flex items-center cursor-pointer select-none">
+                                <input 
+                                  type="checkbox" 
+                                  className="sr-only peer" 
+                                  checked={clubbingEnabled} 
+                                  onChange={(e) => handleToggleClubbing(e.target.checked)} 
+                                />
+                                <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                              </label>
+                            </div>
+
+                            {clubbingEnabled && (
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-3.5 rounded-xl border border-slate-200/60 transition-all">
+                                <div className="space-y-1.5">
+                                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">Max Clubbing Distance</label>
+                                  <select 
+                                    value={maxDistance} 
+                                    onChange={(e) => handleDistanceChange(e.target.value)}
+                                    className="w-full text-xs bg-white border border-slate-200 rounded-lg p-2 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 font-semibold text-slate-700"
+                                  >
+                                    <option value="1">Within 1 km</option>
+                                    <option value="2">Within 2 km</option>
+                                    <option value="3">Within 3 km</option>
+                                    <option value="5">Within 5 km</option>
+                                    <option value="10">Within 10 km</option>
+                                  </select>
+                                </div>
+                                <div className="space-y-1.5">
+                                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">Max Wait Time</label>
+                                  <select 
+                                    value={maxWaitTime} 
+                                    onChange={(e) => handleWaitTimeChange(e.target.value)}
+                                    className="w-full text-xs bg-white border border-slate-200 rounded-lg p-2 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 font-semibold text-slate-700"
+                                  >
+                                    <option value="2">2 minutes</option>
+                                    <option value="5">5 minutes</option>
+                                    <option value="10">10 minutes</option>
+                                    <option value="15">15 minutes</option>
+                                  </select>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       {/* Selected Indicator */}
@@ -262,6 +380,12 @@ export const AdminAllocations = () => {
                             <Star size={8} fill="currentColor" />
                           </div>
                         </div>
+                        {selectedStrategy === 'zone' && (
+                          <div className="mt-1 flex items-center gap-1 text-[9px] font-bold text-indigo-600">
+                            <Compass size={10} className="shrink-0" />
+                            <span>{driverZonesMap[driver.id]?.name || 'No Zone'}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
 

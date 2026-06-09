@@ -27,102 +27,25 @@ const getBgClass = (type) => {
 };
 
 export const MainLayout = ({ children, title }) => {
-  const { currentUser, toast, showToast, orders, invoices, settlements, drivers } = useLogistics();
+  const { 
+    currentUser, toast, showToast, 
+    notifications = [], unreadNotificationsCount = 0, 
+    markNotificationAsRead, markAllNotificationsAsRead 
+  } = useLogistics();
   const [isNotificationOpen, setIsNotificationOpen] = React.useState(false);
-  const [localNotifications, setLocalNotifications] = React.useState([]);
 
-  React.useEffect(() => {
-    const list = [];
-    
-    // 1. Completed orders
-    const completedOrders = (orders || []).filter(o => o.status === 'DELIVERED').slice(0, 2);
-    completedOrders.forEach(o => {
-      list.push({
-        id: `order-del-${o.id}`,
-        type: 'delivery',
-        title: 'Order Delivered',
-        description: `Order ${o.trackingId || '#' + o.id.substring(0, 6)} has been successfully delivered to ${o.customerName || 'customer'}.`,
-        time: o.updatedAt ? new Date(o.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Today',
-        read: false,
-      });
-    });
-
-    // 2. Pending orders needing assignment
-    const pendingOrders = (orders || []).filter(o => o.status === 'PENDING').slice(0, 2);
-    pendingOrders.forEach(o => {
-      list.push({
-        id: `order-pend-${o.id}`,
-        type: 'assignment',
-        title: 'Pending Assignment',
-        description: `New order ${o.trackingId || '#' + o.id.substring(0, 6)} is pending assignment.`,
-        time: o.createdAt ? new Date(o.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Today',
-        read: false,
-      });
-    });
-
-    // 3. Paid invoices
-    const paidInvoices = (invoices || []).filter(i => i.status?.toLowerCase() === 'paid').slice(0, 1);
-    paidInvoices.forEach(i => {
-      list.push({
-        id: `invoice-paid-${i.id}`,
-        type: 'billing',
-        title: 'Invoice Settled',
-        description: `Invoice for ${i.clientName} of ${i.amount} ${i.currency} marked as paid.`,
-        time: i.updatedAt ? new Date(i.updatedAt).toLocaleDateString() : 'Yesterday',
-        read: true,
-      });
-    });
-
-    // 4. Online drivers
-    const onlineDrivers = (drivers || []).filter(d => d.isOnline).slice(0, 2);
-    onlineDrivers.forEach(d => {
-      list.push({
-        id: `driver-online-${d.id}`,
-        type: 'driver',
-        title: 'Driver Online',
-        description: `Driver ${d.name} is now online and location-active.`,
-        time: 'Active',
-        read: false,
-      });
-    });
-
-    // Add baseline notifications if list is empty
-    if (list.length === 0) {
-      list.push(
-        {
-          id: 'b1',
-          type: 'system',
-          title: 'Welcome to LastMile Trax',
-          description: 'Explore the dashboard to manage orders, billing, and drivers.',
-          time: 'Just now',
-          read: false,
-        },
-        {
-          id: 'b2',
-          type: 'billing',
-          title: 'Monthly Analytics Ready',
-          description: 'Check out the Billing dashboard for dynamic revenue collection rates.',
-          time: '1h ago',
-          read: true,
-        }
-      );
-    }
-
-    setLocalNotifications(list);
-  }, [orders, invoices, settlements, drivers]);
-
-  const unreadCount = localNotifications.filter(n => !n.read).length;
+  const unreadCount = unreadNotificationsCount;
 
   const toggleRead = (id) => {
-    setLocalNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    markNotificationAsRead(id);
   };
 
   const markAllAsRead = () => {
-    setLocalNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    markAllNotificationsAsRead();
   };
 
   const clearAll = () => {
-    setLocalNotifications([]);
+    markAllNotificationsAsRead();
   };
 
   return (
@@ -201,8 +124,8 @@ export const MainLayout = ({ children, title }) => {
 
         {/* Drawer Content */}
         <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
-          {localNotifications.length > 0 ? (
-            localNotifications.map((notif) => {
+          {notifications.length > 0 ? (
+            notifications.map((notif) => {
               const Icon = getIcon(notif.type);
               const bgClass = getBgClass(notif.type);
               return (
@@ -248,7 +171,7 @@ export const MainLayout = ({ children, title }) => {
         </div>
 
         {/* Drawer Footer */}
-        {localNotifications.length > 0 && (
+        {notifications.length > 0 && (
           <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex gap-3">
             <button 
               onClick={clearAll}

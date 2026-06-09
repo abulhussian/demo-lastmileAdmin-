@@ -3,20 +3,20 @@ import { useNavigate } from 'react-router-dom';
 import { MainLayout } from '../../components/MainLayout';
 import { useLogistics } from '../../contexts/LogisticsContext';
 import { KPICard } from '../../components/Cards';
-import { 
-  Package, 
-  Truck, 
-  Banknote, 
-  Clock, 
-  TrendingUp, 
-  CheckCircle2, 
-  AlertCircle 
+import {
+  Package,
+  Truck,
+  Banknote,
+  Clock,
+  TrendingUp,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
-import { 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import {
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   AreaChart,
   Area
@@ -63,28 +63,28 @@ export const AdminDashboard = () => {
   return (
     <MainLayout title="Admin Overview">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-        <KPICard 
-          title="Total Orders" 
-          value={totalOrders} 
-          icon={Package} 
-          trend={{ value: 12, isUp: true }} 
+        <KPICard
+          title="Total Orders"
+          value={totalOrders}
+          icon={Package}
+          trend={{ value: 12, isUp: true }}
         />
-        <KPICard 
-          title="Active Drivers" 
-          value={activeDrivers} 
-          icon={Truck} 
+        <KPICard
+          title="Active Drivers"
+          value={activeDrivers}
+          icon={Truck}
         />
-        <KPICard 
-          title="Total Revenue" 
-          value={totalRevenue} 
-          icon={TrendingUp} 
-          isCurrency 
+        <KPICard
+          title="Total Revenue"
+          value={totalRevenue}
+          icon={TrendingUp}
+          isCurrency
           trend={{ value: 8, isUp: true }}
         />
-        <KPICard 
-          title="Settlements Pending" 
-          value={driverCash} 
-          icon={Banknote} 
+        <KPICard
+          title="Settlements Pending"
+          value={driverCash}
+          icon={Banknote}
           isCurrency
           className="border-blue-100 bg-blue-50/20"
         />
@@ -96,7 +96,7 @@ export const AdminDashboard = () => {
           <div className="flex items-center justify-between mb-8">
             <h3 className="font-bold text-slate-900">Revenue Performance</h3>
             <div className="flex gap-2 bg-slate-100 p-1 rounded-full">
-              <button 
+              <button
                 onClick={() => handlePeriodChange('weekly')}
                 className={cn(
                   "text-[10px] font-bold uppercase px-4 py-1.5 rounded-full transition-all",
@@ -105,7 +105,7 @@ export const AdminDashboard = () => {
               >
                 Weekly
               </button>
-              <button 
+              <button
                 onClick={() => handlePeriodChange('monthly')}
                 className={cn(
                   "text-[10px] font-bold uppercase px-4 py-1.5 rounded-full transition-all",
@@ -121,23 +121,23 @@ export const AdminDashboard = () => {
               <AreaChart data={currentChartData}>
                 <defs>
                   <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.2}/>
-                    <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
                 <XAxis dataKey={revenueStats?.charts ? "label" : "name"} fontSize={11} stroke="#94A3B8" axisLine={false} tickLine={false} />
                 <YAxis fontSize={11} stroke="#94A3B8" axisLine={false} tickLine={false} />
-                <Tooltip 
+                <Tooltip
                   contentStyle={{ borderRadius: '12px', border: '1px solid #E2E8F0', padding: '12px' }}
                 />
-                <Area 
-                  type="monotone" 
-                  dataKey="revenue" 
-                  stroke="#3B82F6" 
+                <Area
+                  type="monotone"
+                  dataKey="revenue"
+                  stroke="#3B82F6"
                   strokeWidth={3}
-                  fillOpacity={1} 
-                  fill="url(#colorValue)" 
+                  fillOpacity={1}
+                  fill="url(#colorValue)"
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -154,8 +154,8 @@ export const AdminDashboard = () => {
             <div className="space-y-6">
               {[
                 { label: 'Pending Dispatch', value: pendingOrders, color: 'text-amber-500', icon: Clock },
-                { label: 'Success (Today)', value: deliveredToday, color: 'text-emerald-500', icon: CheckCircle2 },
-                { label: 'Active Alerts', value: 3, color: 'text-rose-500', icon: AlertCircle },
+                { label: 'Success ', value: deliveredToday, color: 'text-emerald-500', icon: CheckCircle2 },
+                // { label: 'Active Alerts', value: 3, color: 'text-rose-500', icon: AlertCircle },
               ].map((item, idx) => (
                 <div key={idx} className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -175,13 +175,13 @@ export const AdminDashboard = () => {
             <p className="text-slate-400 text-[12px] mb-6 leading-relaxed">System is running at 98.4% efficiency with 2 active redirects.</p>
             <div className="flex items-center justify-between border-t border-slate-800 pt-4">
               <div className="flex -space-x-2">
-                {[1,2,3].map(i => (
+                {[1, 2, 3].map(i => (
                   <div key={i} className="w-8 h-8 rounded-full border-2 border-slate-950 bg-slate-800 flex items-center justify-center font-bold text-[10px]">
                     D{i}
                   </div>
                 ))}
               </div>
-              <button 
+              <button
                 onClick={() => navigate('/admin/orders')}
                 className="text-[11px] font-bold bg-blue-500 px-3 py-1.5 rounded-lg"
               >

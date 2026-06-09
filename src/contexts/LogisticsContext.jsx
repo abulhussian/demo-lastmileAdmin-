@@ -14,6 +14,8 @@ export const LogisticsProvider = ({ children }) => {
   const [invoices, setInvoices] = useState([]);
   const [settlements, setSettlements] = useState([]);
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+  const [notifications, setNotifications] = useState([]);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
 
   const mapOrder = (o) => {
     const normalizeAddress = (addr) => {
@@ -200,6 +202,53 @@ export const LogisticsProvider = ({ children }) => {
     currency: s.currency || 'SAR'
   });
 
+  const mapNotification = (n) => ({
+    id: n.id,
+    type: n.type || 'system',
+    title: n.title,
+    description: n.message || n.description || '',
+    time: n.created_at ? new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Today',
+    read: !!n.read,
+  });
+
+  const fetchNotifications = useCallback(async () => {
+    if (!currentUser) return;
+    try {
+      const response = await api.get('/notifications');
+      const list = response.data || response || [];
+      setNotifications(list.map(mapNotification));
+      
+      const countResponse = await api.get('/notifications/unread-count');
+      setUnreadNotificationsCount(countResponse.data?.count || countResponse.count || 0);
+    } catch (err) {
+      console.error('Failed to fetch notifications:', err);
+    }
+  }, [currentUser]);
+
+  const markNotificationAsRead = async (id) => {
+    try {
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+      setUnreadNotificationsCount(prev => Math.max(0, prev - 1));
+      await api.patch(`/notifications/${id}/read`, {});
+      fetchNotifications();
+    } catch (err) {
+      console.error('Failed to mark notification as read:', err);
+      fetchNotifications();
+    }
+  };
+
+  const markAllNotificationsAsRead = async () => {
+    try {
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      setUnreadNotificationsCount(0);
+      await api.patch('/notifications/read-all', {});
+      fetchNotifications();
+    } catch (err) {
+      console.error('Failed to mark all notifications as read:', err);
+      fetchNotifications();
+    }
+  };
+
   const [revenueStats, setRevenueStats] = useState(null);
 
   const fetchRevenueStats = useCallback(async () => {
@@ -272,6 +321,7 @@ export const LogisticsProvider = ({ children }) => {
   const fetchData = useCallback(async () => {
     if (!currentUser) return;
     fetchOrders();
+    fetchNotifications();
     if (currentUser.role === 'ADMIN') {
       fetchRevenueStats();
       fetchUsers();
@@ -281,7 +331,15 @@ export const LogisticsProvider = ({ children }) => {
     } else if (currentUser.role === 'CLIENT') {
       fetchInvoices();
     }
-  }, [currentUser, fetchOrders, fetchRevenueStats, fetchUsers, fetchDrivers, fetchInvoices, fetchSettlements]);
+  }, [currentUser, fetchOrders, fetchNotifications, fetchRevenueStats, fetchUsers, fetchDrivers, fetchInvoices, fetchSettlements]);
+
+  useEffect(() => {
+    if (currentUser) {
+      fetchNotifications();
+      const interval = setInterval(fetchNotifications, 15000);
+      return () => clearInterval(interval);
+    }
+  }, [currentUser, fetchNotifications]);
 
   useEffect(() => {
     const refreshUser = async () => {
@@ -501,7 +559,8 @@ export const LogisticsProvider = ({ children }) => {
       settleDriverCash, toggleUserStatus, addUser, updateUser, deleteUser,
       generateInvoices, markInvoicePaid, fetchData,
       forgotPassword, resetPassword,
-      bulkCreateOrders, showToast
+      bulkCreateOrders, showToast,
+      notifications, unreadNotificationsCount, fetchNotifications, markNotificationAsRead, markAllNotificationsAsRead
     }}>
       {children}
     </LogisticsContext.Provider>
