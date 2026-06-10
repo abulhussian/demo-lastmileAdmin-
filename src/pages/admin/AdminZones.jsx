@@ -20,7 +20,8 @@ import {
   Pencil,
   Check,
   Search,
-  Loader2
+  Loader2,
+  Clock
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -39,7 +40,7 @@ const DefaultIcon = L.icon({
 L.Marker.prototype.options.icon = DefaultIcon;
 
 export const AdminZones = () => {
-  const { drivers, fetchDrivers, showToast } = useLogistics();
+  const { drivers, fetchDrivers, showToast, orders, fetchOrders } = useLogistics();
   const [zones, setZones] = useState([]);
   const [loadingZones, setLoadingZones] = useState(true);
   const [selectedZone, setSelectedZone] = useState(null);
@@ -102,6 +103,9 @@ export const AdminZones = () => {
   useEffect(() => {
     fetchDrivers();
     fetchZones();
+    if (fetchOrders) {
+      fetchOrders();
+    }
   }, []);
 
   const fetchZones = async () => {
@@ -425,6 +429,16 @@ export const AdminZones = () => {
   };
 
   const handleToggleDriverDraft = (driverId) => {
+    const driver = drivers.find(d => d.id === driverId);
+    const hasActiveOrders = orders && orders.some(o => 
+      o.driverId === driverId && 
+      ['ASSIGNED', 'PICKED_UP', 'IN_TRANSIT', 'PICKED-UP', 'IN-TRANSIT'].includes(o.status)
+    );
+    if (hasActiveOrders) {
+      showToast(`${driver?.name || 'Driver'} is currently busy with active orders and cannot be reassigned.`, 'warning');
+      return;
+    }
+
     setTempAssignedDrivers(prev => 
       prev.includes(driverId) 
         ? prev.filter(id => id !== driverId) 
@@ -725,20 +739,28 @@ export const AdminZones = () => {
                     const hasOtherZone = otherZoneIds.length > 0;
                     const otherZoneObj = hasOtherZone ? zones.find(z => z.id === otherZoneIds[0]) : null;
 
+                    const hasActiveOrders = orders && orders.some(o => 
+                      o.driverId === driver.id && 
+                      ['ASSIGNED', 'PICKED_UP', 'IN_TRANSIT', 'PICKED-UP', 'IN-TRANSIT'].includes(o.status)
+                    );
+
                     return (
                       <div
                         key={driver.id}
                         onClick={() => {
-                          if (isEditingDrivers) {
+                          if (isEditingDrivers && !hasActiveOrders) {
                             handleToggleDriverDraft(driver.id);
+                          } else if (isEditingDrivers && hasActiveOrders) {
+                            showToast(`${driver.name} is currently busy with active orders and cannot be reassigned.`, 'warning');
                           }
                         }}
                         className={cn(
                           "p-3 rounded-xl border flex items-center justify-between transition-all",
-                          isEditingDrivers ? "cursor-pointer" : "cursor-default",
-                          isAssigned 
+                          isEditingDrivers && !hasActiveOrders ? "cursor-pointer" : "cursor-default",
+                          hasActiveOrders && "opacity-60 bg-slate-50/50 cursor-not-allowed border-dashed border-slate-200",
+                          !hasActiveOrders && isAssigned 
                             ? "border-indigo-200 bg-indigo-50/10" 
-                            : "border-slate-100 hover:border-slate-200 bg-white"
+                            : !hasActiveOrders ? "border-slate-100 hover:border-slate-200 bg-white" : ""
                         )}
                       >
                         <div className="min-w-0">
@@ -756,7 +778,12 @@ export const AdminZones = () => {
                           </div>
                         </div>
 
-                        {isAssigned ? (
+                        {hasActiveOrders ? (
+                          <div className="flex items-center gap-1 text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-150 px-2 py-0.5 rounded-full">
+                            <Clock size={11} className="text-rose-500" />
+                            <span>Busy</span>
+                          </div>
+                        ) : isAssigned ? (
                           <div className="flex items-center gap-1 text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-150 px-2 py-0.5 rounded-full">
                             <CheckCircle size={12} fill="currentColor" className="text-white fill-indigo-600" />
                             <span>Assigned</span>

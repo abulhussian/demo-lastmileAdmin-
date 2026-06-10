@@ -38,9 +38,43 @@ export const AdminAllocations = () => {
   const [maxDistance, setMaxDistance] = useState(() => {
     return localStorage.getItem('fifo_max_distance') || '2';
   });
+  const [maxClubbedOrders, setMaxClubbedOrders] = useState(() => {
+    return localStorage.getItem('fifo_max_clubbed_orders') || '2';
+  });
 
-  // Fetch drivers exactly once on mount
+  // Fetch strategy settings and drivers on mount
   useEffect(() => {
+    const fetchStrategy = async () => {
+      try {
+        setLoadingStrategy(true);
+        const res = await api.get('/drivers/assignment-strategy');
+        if (res && res.data && res.data.success && res.data.data) {
+          const settings = res.data.data;
+          const strat = settings.strategy ? settings.strategy.toLowerCase() : 'zone';
+          setSelectedStrategy(strat);
+          localStorage.setItem('last_mile_strategy', strat);
+          
+          if (settings.order_clubbing !== undefined) {
+            setClubbingEnabled(settings.order_clubbing);
+            localStorage.setItem('fifo_clubbing_enabled', String(settings.order_clubbing));
+          }
+          if (settings.clubbing_time_difference !== undefined) {
+            setMaxWaitTime(String(settings.clubbing_time_difference));
+            localStorage.setItem('fifo_max_wait_time', String(settings.clubbing_time_difference));
+          }
+          if (settings.clubbing_distance !== undefined) {
+            setMaxDistance(String(settings.clubbing_distance));
+            localStorage.setItem('fifo_max_distance', String(settings.clubbing_distance));
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch assignment strategy settings:', err);
+      } finally {
+        setLoadingStrategy(false);
+      }
+    };
+
+    fetchStrategy();
     fetchDrivers();
   }, []);
 
@@ -71,13 +105,14 @@ export const AdminAllocations = () => {
       setSaving(true);
       const payload = {
         strategy: strategyValue,
-        clubbingEnabled: extras.clubbingEnabled !== undefined ? extras.clubbingEnabled : clubbingEnabled,
-        maxWaitTime: extras.maxWaitTime !== undefined ? extras.maxWaitTime : maxWaitTime,
-        maxDistance: extras.maxDistance !== undefined ? extras.maxDistance : maxDistance
+        order_clubbing: extras.clubbingEnabled !== undefined ? extras.clubbingEnabled : clubbingEnabled,
+        clubbing_time_difference: extras.maxWaitTime !== undefined ? parseFloat(extras.maxWaitTime) : parseFloat(maxWaitTime),
+        clubbing_distance: extras.maxDistance !== undefined ? parseFloat(extras.maxDistance) : parseFloat(maxDistance)
       };
       const response = await api.post('/drivers/assignment-strategy', payload);
-      if (response && response.data && response.data.strategy) {
-        const updated = response.data.strategy.toLowerCase();
+      if (response && response.data && response.data.success && response.data.data) {
+        const settings = response.data.data;
+        const updated = settings.strategy.toLowerCase();
         setSelectedStrategy(updated);
         localStorage.setItem('last_mile_strategy', updated);
       } else {
@@ -96,25 +131,19 @@ export const AdminAllocations = () => {
   const handleToggleClubbing = async (enabled) => {
     setClubbingEnabled(enabled);
     localStorage.setItem('fifo_clubbing_enabled', String(enabled));
-    if (selectedStrategy === 'fifo') {
-      await handleSaveStrategy('fifo', { clubbingEnabled: enabled });
-    }
+    await handleSaveStrategy(selectedStrategy, { clubbingEnabled: enabled });
   };
 
   const handleWaitTimeChange = async (time) => {
     setMaxWaitTime(time);
     localStorage.setItem('fifo_max_wait_time', time);
-    if (selectedStrategy === 'fifo') {
-      await handleSaveStrategy('fifo', { maxWaitTime: time });
-    }
+    await handleSaveStrategy(selectedStrategy, { maxWaitTime: time });
   };
 
   const handleDistanceChange = async (distance) => {
     setMaxDistance(distance);
     localStorage.setItem('fifo_max_distance', distance);
-    if (selectedStrategy === 'fifo') {
-      await handleSaveStrategy('fifo', { maxDistance: distance });
-    }
+    await handleSaveStrategy(selectedStrategy, { maxDistance: distance });
   };
 
   const strategies = [
@@ -238,7 +267,7 @@ export const AdminAllocations = () => {
                           ))}
                         </ul>
 
-                        {strategy.id === 'fifo' && isSelected && (
+                        {isSelected && (
                           <div 
                             onClick={(e) => e.stopPropagation()} 
                             className="mt-4 pt-4 border-t border-slate-100 w-full space-y-4 cursor-default"
@@ -259,14 +288,16 @@ export const AdminAllocations = () => {
                               </label>
                             </div>
 
-                            {clubbingEnabled && (
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-3.5 rounded-xl border border-slate-200/60 transition-all">
-                                <div className="space-y-1.5">
-                                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">Max Clubbing Distance</label>
+                             {clubbingEnabled && (
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200/60 transition-all">
+                                <div className="flex flex-col gap-1.5">
+                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">
+                                    Max Distance
+                                  </label>
                                   <select 
                                     value={maxDistance} 
                                     onChange={(e) => handleDistanceChange(e.target.value)}
-                                    className="w-full text-xs bg-white border border-slate-200 rounded-lg p-2 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 font-semibold text-slate-700"
+                                    className="w-full text-xs bg-white border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 font-semibold text-slate-700 h-9"
                                   >
                                     <option value="1">Within 1 km</option>
                                     <option value="2">Within 2 km</option>
@@ -275,17 +306,39 @@ export const AdminAllocations = () => {
                                     <option value="10">Within 10 km</option>
                                   </select>
                                 </div>
-                                <div className="space-y-1.5">
-                                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">Max Wait Time</label>
+                                <div className="flex flex-col gap-1.5">
+                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">
+                                    Max Wait Time
+                                  </label>
                                   <select 
                                     value={maxWaitTime} 
                                     onChange={(e) => handleWaitTimeChange(e.target.value)}
-                                    className="w-full text-xs bg-white border border-slate-200 rounded-lg p-2 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 font-semibold text-slate-700"
+                                    className="w-full text-xs bg-white border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 font-semibold text-slate-700 h-9"
                                   >
                                     <option value="2">2 minutes</option>
                                     <option value="5">5 minutes</option>
                                     <option value="10">10 minutes</option>
                                     <option value="15">15 minutes</option>
+                                  </select>
+                                </div>
+                                <div className="flex flex-col gap-1.5">
+                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">
+                                    Max Orders
+                                  </label>
+                                  <select 
+                                    value={maxClubbedOrders} 
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      setMaxClubbedOrders(val);
+                                      localStorage.setItem('fifo_max_clubbed_orders', val);
+                                    }}
+                                    className="w-full text-xs bg-white border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 font-semibold text-slate-700 h-9"
+                                  >
+                                    <option value="2">Up to 2 orders</option>
+                                    <option value="3">Up to 3 orders</option>
+                                    <option value="4">Up to 4 orders</option>
+                                    <option value="5">Up to 5 orders</option>
+                                    <option value="10">Up to 10 orders</option>
                                   </select>
                                 </div>
                               </div>
