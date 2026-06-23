@@ -103,11 +103,12 @@ export const AdminAllocations = () => {
   const handleSaveStrategy = async (strategyValue, extras = {}) => {
     try {
       setSaving(true);
+      const isNone = strategyValue === 'none';
       const payload = {
         strategy: strategyValue,
-        order_clubbing: extras.clubbingEnabled !== undefined ? extras.clubbingEnabled : clubbingEnabled,
-        clubbing_time_difference: extras.maxWaitTime !== undefined ? parseFloat(extras.maxWaitTime) : parseFloat(maxWaitTime),
-        clubbing_distance: extras.maxDistance !== undefined ? parseFloat(extras.maxDistance) : parseFloat(maxDistance)
+        order_clubbing: isNone ? false : (extras.clubbingEnabled !== undefined ? extras.clubbingEnabled : clubbingEnabled),
+        clubbing_time_difference: isNone ? 0 : (extras.maxWaitTime !== undefined ? parseFloat(extras.maxWaitTime) : parseFloat(maxWaitTime)),
+        clubbing_distance: isNone ? 0 : (extras.maxDistance !== undefined ? parseFloat(extras.maxDistance) : parseFloat(maxDistance))
       };
       const response = await api.post('/drivers/assignment-strategy', payload);
       if (response && response.data && response.data.success && response.data.data) {
@@ -147,6 +148,19 @@ export const AdminAllocations = () => {
   };
 
   const strategies = [
+    {
+      id: 'none',
+      title: 'Manual Driver Assignment',
+      icon: UserCheck2,
+      description: 'Disables all auto-allocation algorithms. Pending orders must be assigned to drivers manually.',
+      badge: 'Manual Only',
+      badgeColor: 'bg-rose-50 text-rose-700 border-rose-100',
+      points: [
+        'Disables automatic dispatching queue',
+        'Requires manual intervention for every order',
+        'Full administrator routing control'
+      ]
+    },
     {
       id: 'fifo',
       title: 'First-In, First-Out (FIFO)',
@@ -267,7 +281,7 @@ export const AdminAllocations = () => {
                           ))}
                         </ul>
 
-                        {isSelected && (
+                        {isSelected && strategy.id !== 'none' && (
                           <div 
                             onClick={(e) => e.stopPropagation()} 
                             className="mt-4 pt-4 border-t border-slate-100 w-full space-y-4 cursor-default"

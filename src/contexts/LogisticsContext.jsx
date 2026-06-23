@@ -49,7 +49,8 @@ export const LogisticsProvider = ({ children }) => {
       customerPhone: o.customer_phone,
       pickupAddress: normalizeAddress(o.pickup_address),
       deliveryAddress: normalizeAddress(o.delivery_address),
-      timeline: o.timeline || []
+      timeline: o.timeline || [],
+      driverRating: o.driver_rating
     };
   };
 

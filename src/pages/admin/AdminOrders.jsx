@@ -3,7 +3,7 @@ import { MainLayout } from '../../components/MainLayout';
 import { useLogistics } from '../../contexts/LogisticsContext';
 import { StatusBadge } from '../../components/Cards';
 import { formatCurrency, formatDate, cn } from '../../lib/utils';
-import { Search, MoreVertical, MapPin, Phone, User as UserIcon, Plus, Package, X, Truck, Download, Upload, FileSpreadsheet, CheckCircle2 } from 'lucide-react';
+import { Search, MoreVertical, MapPin, Phone, User as UserIcon, Plus, Package, X, Truck, Download, Upload, FileSpreadsheet, CheckCircle2, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../../lib/api';
@@ -39,6 +39,38 @@ export const AdminOrders = () => {
   const [isAssigning, setIsAssigning] = useState(false);
   const isAdmin = currentUser?.role === 'ADMIN';
   const isCompletedOrCancelled = selectedOrder?.status?.toUpperCase() === 'DELIVERED' || selectedOrder?.status?.toUpperCase() === 'CANCELLED';
+
+  const [hoverRating, setHoverRating] = useState(0);
+  const [clientRating, setClientRating] = useState(0);
+  const [ratingSubmitted, setRatingSubmitted] = useState(false);
+  const [submittingRating, setSubmittingRating] = useState(false);
+
+  useEffect(() => {
+    if (selectedOrder?.driverRating) {
+      setClientRating(selectedOrder.driverRating);
+      setRatingSubmitted(true);
+    } else {
+      setClientRating(0);
+      setRatingSubmitted(false);
+    }
+    setHoverRating(0);
+  }, [selectedOrder?.id, selectedOrder?.driverRating]);
+
+  const handleRateDriver = async (ratingVal) => {
+    if (!selectedOrder?.id) return;
+    setSubmittingRating(true);
+    try {
+      await api.post(`/orders/${selectedOrder.id}/rate`, { rating: ratingVal });
+      setRatingSubmitted(true);
+      setClientRating(ratingVal);
+      setSelectedOrder(prev => ({ ...prev, driverRating: ratingVal }));
+      fetchOrders();
+    } catch (err) {
+      console.error('Failed to rate driver:', err);
+    } finally {
+      setSubmittingRating(false);
+    }
+  };
 
   const getOrderCurrency = (order) => {
     if (!order) return 'SAR';
@@ -220,11 +252,8 @@ export const AdminOrders = () => {
               {filteredOrders.map((order) => (
                 <tr
                   key={order.id}
-                  className={cn(
-                    "hover:bg-[#F8FAFC] transition-colors group",
-                    isAdmin ? "cursor-pointer" : "cursor-default"
-                  )}
-                  onClick={() => isAdmin && setSelectedOrder(order)}
+                  className="hover:bg-[#F8FAFC] transition-colors group cursor-pointer"
+                  onClick={() => setSelectedOrder(order)}
                 >
                   <td className="px-6 py-5">
                     <div className="flex items-center gap-3">
@@ -293,8 +322,8 @@ export const AdminOrders = () => {
       {/* Detail Modal */}
       {selectedOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
-            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+          <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-xl bg-indigo-600 text-white flex items-center justify-center">
                   <Package size={24} />
@@ -312,7 +341,7 @@ export const AdminOrders = () => {
               </button>
             </div>
 
-            <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-10">
+            <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-10 overflow-y-auto flex-1 scrollbar-thin">
               <div className="space-y-6">
                 <div>
                   <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Recipient</h4>
@@ -342,7 +371,7 @@ export const AdminOrders = () => {
                       </button>
                     </div>
 
-                    {selectedOrder.driverId && (
+                    {selectedOrder.driverId && (isAdmin || !isCompletedOrCancelled) && (
                       <div className="relative pl-6">
                         <div className="absolute left-0 top-1 w-3 h-3 rounded-full bg-amber-500 border-2 border-white shadow-sm z-10 animate-pulse" />
                         <p className="text-[10px] font-bold text-slate-400 uppercase whitespace-nowrap">Driver Location (Now)</p>
@@ -355,7 +384,7 @@ export const AdminOrders = () => {
                           const driver = drivers.find(d => d.id === selectedOrder.driverId);
                           const driverName = driver?.name || 'Driver';
                           
-                          if (driverLocation) {
+                          if (driverLocation && driverLocation.latitude && driverLocation.longitude) {
                             const timeStr = driverLocation.updated_at || driverLocation.created_at
                               ? new Date(driverLocation.updated_at || driverLocation.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
                               : '';
@@ -451,7 +480,7 @@ export const AdminOrders = () => {
                           </div>
                           <p className="text-sm font-bold text-indigo-950">{selectedOrder.driverName}</p>
                         </div>
-                        {!isCompletedOrCancelled && (
+                        {isAdmin && !isCompletedOrCancelled && (
                           <button onClick={() => setShowAssignForm(true)} className="text-[11px] font-bold text-indigo-600 hover:underline">Change</button>
                         )}
                       </div>
@@ -461,7 +490,7 @@ export const AdminOrders = () => {
                           <Truck size={24} />
                           No Driver Assigned (Closed)
                         </div>
-                      ) : (
+                      ) : isAdmin ? (
                         <button
                           onClick={() => setShowAssignForm(true)}
                           className="w-full py-4 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50 transition-all text-xs font-bold flex flex-col items-center gap-2"
@@ -469,6 +498,11 @@ export const AdminOrders = () => {
                           <Truck size={24} />
                           Assign Driver
                         </button>
+                      ) : (
+                        <div className="w-full py-4 border border-slate-200 rounded-xl text-slate-400 bg-slate-50 text-xs font-bold flex flex-col items-center gap-2">
+                          <Truck size={24} />
+                          Waiting for Driver Assignment
+                        </div>
                       )
                     )}
 
@@ -508,11 +542,59 @@ export const AdminOrders = () => {
                     )}
                   </div>
                 </div>
+
+                {!isAdmin && selectedOrder.driverId && selectedOrder.status?.toUpperCase() === 'DELIVERED' && (
+                  <div className="mt-6 border-t border-slate-100 pt-6">
+                    <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Rate Driver</h4>
+                    <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-5 text-center">
+                      {ratingSubmitted ? (
+                        <div className="space-y-2">
+                          <p className="text-sm font-bold text-slate-800">Thank you for your rating!</p>
+                          <div className="flex justify-center gap-1 text-amber-500">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <Star
+                                key={star}
+                                size={18}
+                                fill={star <= clientRating ? "currentColor" : "none"}
+                                className="stroke-amber-500"
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          <p className="text-xs text-slate-500">How was your delivery experience with {selectedOrder.driverName}?</p>
+                          <div className="flex justify-center gap-2">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <button
+                                key={star}
+                                disabled={submittingRating}
+                                onClick={() => handleRateDriver(star)}
+                                onMouseEnter={() => setHoverRating(star)}
+                                onMouseLeave={() => setHoverRating(0)}
+                                className="transition-transform hover:scale-110 active:scale-95 outline-none focus:outline-none"
+                              >
+                                <Star
+                                  size={24}
+                                  fill={star <= (hoverRating || clientRating) ? "currentColor" : "none"}
+                                  className={cn(
+                                    "stroke-slate-300 transition-colors",
+                                    star <= (hoverRating || clientRating) ? "text-amber-400 stroke-amber-400" : "text-transparent"
+                                  )}
+                                />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
-            <div className="px-8 py-5 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-              {!isCompletedOrCancelled ? (
+            <div className="px-8 py-5 bg-slate-50 border-t border-slate-100 flex items-center justify-between shrink-0">
+              {isAdmin && !isCompletedOrCancelled ? (
                 <button
                   onClick={async () => {
                     if (confirm('Cancel this order?')) {
@@ -528,24 +610,26 @@ export const AdminOrders = () => {
                 <div />
               )}
               <div className="flex gap-3">
-                <select
-                  disabled={isCompletedOrCancelled}
-                  className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs font-bold outline-none cursor-pointer focus:ring-2 focus:ring-indigo-600/10 disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-100"
-                  onChange={async (e) => {
-                    const newStatus = e.target.value;
-                    try {
-                      setSelectedOrder({ ...selectedOrder, status: newStatus });
-                      await updateOrderStatus(selectedOrder.id, newStatus);
-                    } catch (err) {
-                      console.error(err);
-                    }
-                  }}
-                  value={selectedOrder.status?.toUpperCase()}
-                >
-                  {Object.values(OrderStatus).map(st => (
-                    <option key={st} value={st}>{st.replace('_', ' ')}</option>
-                  ))}
-                </select>
+                {isAdmin && (
+                  <select
+                    disabled={isCompletedOrCancelled}
+                    className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs font-bold outline-none cursor-pointer focus:ring-2 focus:ring-indigo-600/10 disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-100"
+                    onChange={async (e) => {
+                      const newStatus = e.target.value;
+                      try {
+                        setSelectedOrder({ ...selectedOrder, status: newStatus });
+                        await updateOrderStatus(selectedOrder.id, newStatus);
+                      } catch (err) {
+                        console.error(err);
+                      }
+                    }}
+                    value={selectedOrder.status?.toUpperCase()}
+                  >
+                    {Object.values(OrderStatus).map(st => (
+                      <option key={st} value={st}>{st.replace('_', ' ')}</option>
+                    ))}
+                  </select>
+                )}
                 <button onClick={() => setSelectedOrder(null)} className="px-8 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-black transition-all shadow-md">Done</button>
               </div>
             </div>
